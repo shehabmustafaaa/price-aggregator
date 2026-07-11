@@ -118,6 +118,20 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         },
       });
 
+      // Backfill product image from the store listing if we have none.
+      if (raw.image_url) {
+        const variant = await prisma.productVariant.findUnique({
+          where: { id: productVariantId },
+          include: { product: { select: { id: true, images: true } } },
+        });
+        if (variant && variant.product.images.length === 0) {
+          await prisma.product.update({
+            where: { id: variant.product.id },
+            data: { images: [raw.image_url] },
+          });
+        }
+      }
+
       // Price history: record on first sighting and on every change.
       if (oldPrice === null || oldPrice !== raw.price || existing?.inStock !== raw.in_stock) {
         await prisma.priceHistory.create({
