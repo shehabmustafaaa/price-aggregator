@@ -1,0 +1,32 @@
+{
+  "common": {
+    "siteName": "Asaar",
+    "searchPlaceholder": "Search for a phone…",
+    "search": "Search",
+    "egp": "EGP",
+    "goToShop": "Go to Shop",
+    "inStock": "In stock",
+    "outOfStock": "Out of stock",
+    "freeShipping": "Free shipping",
+    "shipping": "+ {amount} shipping",
+    "updatedAgo": "Price updated {ago}",
+    "compareShops": "compare {count} shops",
+    "bestPrice": "Best price",
+    "officialWarranty": "Official warranty",
+    "importedVersion": "Imported",
+    "reportPrice": "Report wrong price",
+    "reportThanks": "Thanks! We'll check this price.",
+    "noResults": "No products found for \"{query}\". We logged it and will try to add it!",
+    "categories": "Categories",
+    "latestProducts": "Latest products",
+    "allBrands": "All brands",
+    "sortPriceAsc": "Price: low to high",
+    "sortPriceDesc": "Price: high to low",
+    "filters": "Filters",
+    "brand": "Brand",
+    "priceRange": "Price range",
+    "apply": "Apply",
+    "offers": "Offers",
+    "noOffers": "No fresh offers right now — check back soon."
+  }
+}

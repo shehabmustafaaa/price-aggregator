@@ -1,0 +1,32 @@
+{
+  "common": {
+    "siteName": "أسعار",
+    "searchPlaceholder": "ابحث عن موبايل…",
+    "search": "بحث",
+    "egp": "جنيه",
+    "goToShop": "اذهب للمتجر",
+    "inStock": "متوفر",
+    "outOfStock": "غير متوفر",
+    "freeShipping": "شحن مجاني",
+    "shipping": "+ {amount} شحن",
+    "updatedAgo": "آخر تحديث للسعر {ago}",
+    "compareShops": "قارن بين {count} متاجر",
+    "bestPrice": "أفضل سعر",
+    "officialWarranty": "ضمان الوكيل",
+    "importedVersion": "مستورد",
+    "reportPrice": "أبلغ عن سعر خاطئ",
+    "reportThanks": "شكراً! سنراجع هذا السعر.",
+    "noResults": "لا توجد نتائج عن \"{query}\". سجلنا طلبك وسنحاول إضافته!",
+    "categories": "الأقسام",
+    "latestProducts": "أحدث المنتجات",
+    "allBrands": "كل الماركات",
+    "sortPriceAsc": "السعر: من الأقل للأعلى",
+    "sortPriceDesc": "السعر: من الأعلى للأقل",
+    "filters": "التصفية",
+    "brand": "الماركة",
+    "priceRange": "نطاق السعر",
+    "apply": "تطبيق",
+    "offers": "العروض",
+    "noOffers": "لا توجد عروض حديثة الآن — عد قريباً."
+  }
+}

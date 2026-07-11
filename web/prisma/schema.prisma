@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Taxonomy ----------
+
+model Category {
+  id       Int        @id @default(autoincrement())
+  parentId Int?       @map("parent_id")
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  slug     String     @unique
+  nameEn   String     @map("name_en")
+  nameAr   String     @map("name_ar")
+
+  products        Product[]
+  categoryStores  CategoryStore[]
+  specDefinitions SpecDefinition[]
+
+  @@map("categories")
+}
+
+// Per-category store coverage: future categories scrape different sites.
+model CategoryStore {
+  categoryId Int      @map("category_id")
+  storeId    Int      @map("store_id")
+  category   Category @relation(fields: [categoryId], references: [id])
+  store      Store    @relation(fields: [storeId], references: [id])
+
+  @@id([categoryId, storeId])
+  @@map("category_stores")
+}
+
+// Drives which filter facets render per category.
+model SpecDefinition {
+  id         Int      @id @default(autoincrement())
+  categoryId Int      @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id])
+  key        String // e.g. "ram_gb", "storage_gb", "screen_inch", "battery_mah", "has_5g"
+  labelEn    String   @map("label_en")
+  labelAr    String   @map("label_ar")
+  unit       String?
+  filterType String   @map("filter_type") // "range" | "multi" | "boolean"
+  sortOrder  Int      @default(0) @map("sort_order")
+
+  @@unique([categoryId, key])
+  @@map("spec_definitions")
+}
+
+model Brand {
+  id       Int       @id @default(autoincrement())
+  slug     String    @unique
+  name     String
+  products Product[]
+
+  @@map("brands")
+}
+
+// ---------- Catalog ----------
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  categoryId  Int      @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id])
+  brandId     Int?     @map("brand_id")
+  brand       Brand?   @relation(fields: [brandId], references: [id])
+  slug        String   @unique
+  nameEn      String   @map("name_en")
+  nameAr      String   @map("name_ar")
+  modelNumber String?  @map("model_number")
+  gtin        String?
+  specs       Json     @default("{}")
+  images      String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  variants    ProductVariant[]
+  priceAlerts PriceAlert[]
+  favorites   Favorite[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        Int     @id @default(autoincrement())
+  productId Int     @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+  attrs     Json    @default("{}") // e.g. {"storage_gb":256,"color":"black"}
+
+  offers Offer[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// ---------- Stores & offers ----------
+
+model Store {
+  id              Int     @id @default(autoincrement())
+  slug            String  @unique
+  name            String
+  domain          String
+  logoUrl         String? @map("logo_url")
+  affiliateConfig Json    @default("{}") @map("affiliate_config")
+  active          Boolean @default(true)
+
+  offers         Offer[]
+  categoryStores CategoryStore[]
+  scrapeRuns     ScrapeRun[]
+
+  @@map("stores")
+}
+
+enum OfferCondition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+// Egypt grey-market reality: same phone, very different offers.
+enum WarrantyType {
+  OFFICIAL_LOCAL // local agent warranty
+  IMPORTED // grey market / imported
+  UNKNOWN
+}
+
+model Offer {
+  id               Int            @id @default(autoincrement())
+  productVariantId Int            @map("product_variant_id")
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
+  storeId          Int            @map("store_id")
+  store            Store          @relation(fields: [storeId], references: [id])
+  url              String
+  titleRaw         String         @map("title_raw") // store's own listing title
+  price            Decimal        @db.Decimal(12, 2)
+  shippingCost     Decimal?       @map("shipping_cost") @db.Decimal(12, 2)
+  currency         String         @default("EGP")
+  inStock          Boolean        @default(true) @map("in_stock")
+  condition        OfferCondition @default(NEW)
+  warrantyType     WarrantyType   @default(UNKNOWN) @map("warranty_type")
+  regionVersion    String?        @map("region_version") // "ME" | "GLOBAL" | null
+  couponCode       String?        @map("coupon_code")
+  firstSeenAt      DateTime       @default(now()) @map("first_seen_at")
+  lastSeenAt       DateTime       @default(now()) @map("last_seen_at") // staleness: >24h => hidden
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  priceHistory   PriceHistory[]
+  outboundClicks OutboundClick[]
+  priceReports   PriceReport[]
+
+  @@unique([storeId, url])
+  @@index([productVariantId])
+  @@index([lastSeenAt])
+  @@map("offers")
+}
+
+model PriceHistory {
+  id           BigInt   @id @default(autoincrement())
+  offerId      Int      @map("offer_id")
+  offer        Offer    @relation(fields: [offerId], references: [id])
+  price        Decimal  @db.Decimal(12, 2)
+  shippingCost Decimal? @map("shipping_cost") @db.Decimal(12, 2)
+  inStock      Boolean  @map("in_stock")
+  recordedAt   DateTime @default(now()) @map("recorded_at")
+
+  @@index([offerId, recordedAt])
+  @@map("price_history")
+}
+
+// ---------- Users (schema-only in Phase 1; UI arrives Phase 2) ----------
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  phone        String?
+  locale       String   @default("ar")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  priceAlerts PriceAlert[]
+  favorites   Favorite[]
+
+  @@map("users")
+}
+
+enum AlertChannel {
+  EMAIL
+  TELEGRAM
+  WHATSAPP
+  WEB_PUSH
+}
+
+model PriceAlert {
+  id          Int          @id @default(autoincrement())
+  userId      Int          @map("user_id")
+  user        User         @relation(fields: [userId], references: [id])
+  productId   Int          @map("product_id")
+  product     Product      @relation(fields: [productId], references: [id])
+  targetPrice Decimal      @map("target_price") @db.Decimal(12, 2)
+  channel     AlertChannel @default(EMAIL)
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  lastFiredAt DateTime?    @map("last_fired_at")
+
+  @@index([productId, active])
+  @@map("price_alerts")
+}
+
+model Favorite {
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([userId, productId])
+  @@map("favorites")
+}
+
+// ---------- Tracking & ops ----------
+
+model OutboundClick {
+  id        BigInt   @id @default(autoincrement())
+  offerId   Int      @map("offer_id")
+  offer     Offer    @relation(fields: [offerId], references: [id])
+  clickedAt DateTime @default(now()) @map("clicked_at")
+  referer   String?
+  locale    String?
+
+  @@index([offerId, clickedAt])
+  @@map("outbound_clicks")
+}
+
+// "Report wrong price" — no login required.
+model PriceReport {
+  id        Int      @id @default(autoincrement())
+  offerId   Int      @map("offer_id")
+  offer     Offer    @relation(fields: [offerId], references: [id])
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  resolved  Boolean  @default(false)
+
+  @@map("price_reports")
+}
+
+enum ScrapeStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+// Health row per scrape run — Phase 3 dashboard reads these.
+model ScrapeRun {
+  id             Int          @id @default(autoincrement())
+  storeId        Int          @map("store_id")
+  store          Store        @relation(fields: [storeId], references: [id])
+  status         ScrapeStatus @default(RUNNING)
+  startedAt      DateTime     @default(now()) @map("started_at")
+  finishedAt     DateTime?    @map("finished_at")
+  offersSeen     Int          @default(0) @map("offers_seen")
+  offersUpserted Int          @default(0) @map("offers_upserted")
+  parseErrors    Int          @default(0) @map("parse_errors")
+  rejects        Int          @default(0) // price-sanity rejections
+  note           String?
+
+  @@index([storeId, startedAt])
+  @@map("scrape_runs")
+}
+
+// Low-confidence product matches wait here for human review.
+model MatchReview {
+  id                        Int      @id @default(autoincrement())
+  storeId                   Int      @map("store_id")
+  rawTitle                  String   @map("raw_title")
+  rawUrl                    String   @map("raw_url")
+  rawPayload                Json     @default("{}") @map("raw_payload")
+  suggestedProductVariantId Int?     @map("suggested_product_variant_id")
+  confidence                Float    @default(0)
+  status                    String   @default("pending") // pending | approved | rejected
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@map("match_review_queue")
+}
+
+// No-results search capture — drives what to add next.
+model MissedSearch {
+  id        Int      @id @default(autoincrement())
+  query     String
+  locale    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([query])
+  @@map("missed_searches")
+}

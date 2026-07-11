@@ -1,0 +1,9 @@
+# Python (scraper)
+scraper/.venv/
+scraper/__pycache__/
+scraper/**/__pycache__/
+
+# Secrets
+.env
+scraper/.env
+web/.env
