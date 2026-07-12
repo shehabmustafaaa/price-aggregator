@@ -29,7 +29,32 @@
     "offers": "Offers",
     "colors": "Colors",
     "priceHistory": "Price history (90 days)",
+    "account": "Account",
+    "targetPrice": "Target price",
+    "setAlert": "Set price alert",
+    "updateAlert": "Update alert",
+    "addFavorite": "Add to favorites",
+    "inFavorites": "In favorites",
     "allColors": "All colors",
     "noOffers": "No fresh offers right now — check back soon."
+  },
+  "account": {
+    "title": "Sign in or create an account",
+    "login": "Log in",
+    "register": "Create account",
+    "email": "Email",
+    "password": "Password (8+ characters)",
+    "logout": "Log out",
+    "myAlerts": "My price alerts",
+    "noAlerts": "No alerts yet — set one from any product page.",
+    "myFavorites": "My favorites",
+    "noFavorites": "No favorites yet.",
+    "remove": "Remove",
+    "errors": {
+      "invalid_email": "Please enter a valid email.",
+      "weak_password": "Password must be at least 8 characters.",
+      "email_taken": "This email is already registered.",
+      "bad_credentials": "Wrong email or password."
+    }
   }
 }

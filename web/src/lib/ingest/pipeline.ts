@@ -4,6 +4,7 @@ import { matchOffer } from "./match";
 import { isPriceSane } from "./sanity";
 import { runPostIngestHooks, type PriceChangeEvent } from "./hooks";
 import { canonicalColor } from "@/lib/catalog/colors";
+import "@/lib/alerts/hook"; // registers the price-alert post-ingest hook
 
 export interface IngestResult {
   scrapeRunId: number;

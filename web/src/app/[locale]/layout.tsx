@@ -54,6 +54,12 @@ export default async function LocaleLayout({
                 <SearchBox />
               </div>
               <Link
+                href="/account"
+                className="text-sm text-gray-400 hover:text-gray-100 shrink-0"
+              >
+                {t("account")}
+              </Link>
+              <Link
                 href="/"
                 locale={otherLocale}
                 className="text-sm text-gray-400 hover:text-gray-100 shrink-0"

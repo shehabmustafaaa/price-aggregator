@@ -8,6 +8,9 @@ import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ImageGallery from "@/components/ImageGallery";
 import { colorLabel } from "@/lib/catalog/colors";
 import { Link } from "@/i18n/navigation";
+import { getSessionUserId } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { setAlertAction, toggleFavoriteAction } from "./actions";
 
 export async function generateMetadata({
   params,
@@ -35,6 +38,18 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
   const history = await getPriceHistory(product.id, 90);
+
+  const userId = await getSessionUserId();
+  const [myAlert, myFavorite] = userId
+    ? await Promise.all([
+        prisma.priceAlert.findFirst({
+          where: { userId, productId: product.id, active: true },
+        }),
+        prisma.favorite.findUnique({
+          where: { userId_productId: { userId, productId: product.id } },
+        }),
+      ])
+    : [null, null];
 
   const name = locale === "ar" ? product.nameAr : product.nameEn;
   const numberLocale = locale === "ar" ? "ar-EG" : "en-EG";
@@ -105,6 +120,44 @@ export default async function ProductPage({
               </span>
             </p>
           )}
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <form action={setAlertAction} className="flex items-center gap-2">
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="productId" value={product.id} />
+              <input
+                type="number"
+                name="targetPrice"
+                min={1}
+                required
+                defaultValue={myAlert ? Number(myAlert.targetPrice) : undefined}
+                placeholder={t("targetPrice")}
+                className="w-32 rounded-lg border border-gray-700 bg-gray-900 px-2 py-1.5 text-sm"
+              />
+              <button
+                type="submit"
+                className="rounded-lg border border-blue-600 px-3 py-1.5 text-sm text-blue-400 hover:bg-blue-600/10"
+              >
+                {myAlert ? t("updateAlert") : t("setAlert")}
+              </button>
+            </form>
+            <form action={toggleFavoriteAction}>
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="slug" value={slug} />
+              <input type="hidden" name="productId" value={product.id} />
+              <button
+                type="submit"
+                className={`rounded-lg border px-3 py-1.5 text-sm ${
+                  myFavorite
+                    ? "border-red-500 text-red-400"
+                    : "border-gray-700 text-gray-300 hover:border-red-500"
+                }`}
+              >
+                {myFavorite ? `♥ ${t("inFavorites")}` : `♡ ${t("addFavorite")}`}
+              </button>
+            </form>
+          </div>
 
           {byColor.size > 0 && (
             <div className="mt-5">
