@@ -111,11 +111,40 @@ model Store {
   affiliateConfig Json    @default("{}") @map("affiliate_config")
   active          Boolean @default(true)
 
+  // Scraper control (editable in /admin/scraper)
+  scrapeEnabled         Boolean @default(true) @map("scrape_enabled")
+  scrapeIntervalMinutes Int     @default(360) @map("scrape_interval_minutes")
+  requestDelaySeconds   Float   @default(5) @map("request_delay_seconds")
+
   offers         Offer[]
   categoryStores CategoryStore[]
   scrapeRuns     ScrapeRun[]
+  scrapeJobs     ScrapeJob[]
 
   @@map("stores")
+}
+
+enum ScrapeJobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+// Work queue for the scraper daemon: manual "run now" and scheduled runs.
+model ScrapeJob {
+  id          Int             @id @default(autoincrement())
+  storeId     Int             @map("store_id")
+  store       Store           @relation(fields: [storeId], references: [id])
+  status      ScrapeJobStatus @default(PENDING)
+  trigger     String          @default("manual") // manual | schedule
+  requestedAt DateTime        @default(now()) @map("requested_at")
+  startedAt   DateTime?       @map("started_at")
+  finishedAt  DateTime?       @map("finished_at")
+  note        String?
+
+  @@index([status, requestedAt])
+  @@map("scrape_jobs")
 }
 
 enum OfferCondition {
@@ -147,6 +176,7 @@ model Offer {
   warrantyType     WarrantyType   @default(UNKNOWN) @map("warranty_type")
   regionVersion    String?        @map("region_version") // "ME" | "GLOBAL" | null
   couponCode       String?        @map("coupon_code")
+  attrs            Json           @default("{}") // listing attrs, e.g. {"color":"أسود","storage_gb":128}
   firstSeenAt      DateTime       @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime       @default(now()) @map("last_seen_at") // staleness: >24h => hidden
   createdAt        DateTime       @default(now()) @map("created_at")

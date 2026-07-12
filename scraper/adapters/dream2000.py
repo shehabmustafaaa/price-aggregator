@@ -39,8 +39,18 @@ STORAGE_RE = re.compile(r"(?:التخزين|Storage)\s*:?\s*<[^>]*>*\s*(\d+)\s*(
 RAM_RE = re.compile(r"(?:الذاكرة|Ram)\s*:?\s*(?:<[^>]+>\s*)*(\d+)\s*(?:جيجابايت|GB)", re.IGNORECASE)
 
 
+ARABIC_COLORS = [
+    "أسود", "أبيض", "أزرق فاتح", "أزرق غامق", "أزرق", "أخضر غامق", "أخضر",
+    "رمادي", "فضي", "ذهبي", "وردي", "زيتوني", "رملي", "بنفسجي", "أرجواني",
+    "تيتانيوم", "أصفر", "أحمر", "برتقالي", "بيج", "نحاسي", "كحلي",
+]
+
+
 class Dream2000Adapter:
     store_slug = "dream2000"
+
+    def __init__(self, request_delay_s: float | None = None):
+        self.request_delay_s = request_delay_s or REQUEST_DELAY_S
 
     def scrape(self) -> list[ScrapeResult]:
         results = []
@@ -72,7 +82,7 @@ class Dream2000Adapter:
             if len(products) < PAGE_LIMIT:
                 break
             page += 1
-            time.sleep(REQUEST_DELAY_S)
+            time.sleep(self.request_delay_s)
         return ScrapeResult(
             store_slug=self.store_slug,
             category_slug=category_slug,
@@ -83,7 +93,7 @@ class Dream2000Adapter:
     def _get_with_backoff(
         self, client: httpx.Client, url: str, params: dict
     ) -> httpx.Response:
-        delay = REQUEST_DELAY_S
+        delay = self.request_delay_s
         for attempt in range(MAX_RETRIES):
             resp = client.get(url, params=params)
             if resp.status_code != 429:
@@ -100,9 +110,10 @@ class Dream2000Adapter:
         handle = product["handle"]
         body_html = product.get("body_html") or ""
         vendor = (product.get("vendor") or "").strip()
-        image_url = None
-        if product.get("images"):
-            image_url = product["images"][0].get("src")
+        image_urls = [
+            img["src"] for img in product.get("images", []) if img.get("src")
+        ][:6]
+        image_url = image_urls[0] if image_urls else None
 
         brand = self._detect_brand(vendor) or self._detect_brand(title)
         attrs = self._extract_attrs(body_html)
@@ -118,6 +129,9 @@ class Dream2000Adapter:
             storage = self._storage_from_text(variant_title)
             if storage:
                 variant_attrs["storage_gb"] = storage
+            color = self._color_from_text(variant_title)
+            if color:
+                variant_attrs["color"] = color
             offers.append(
                 RawOffer(
                     url=f"{BASE}/products/{handle}?variant={variant['id']}",
@@ -129,6 +143,7 @@ class Dream2000Adapter:
                     warranty_type="OFFICIAL_LOCAL",
                     attrs=variant_attrs,
                     image_url=image_url,
+                    image_urls=image_urls,
                 )
             )
         return offers
@@ -152,6 +167,13 @@ class Dream2000Adapter:
         if ram:
             attrs["ram_gb"] = int(ram.group(1))
         return attrs
+
+    def _color_from_text(self, text: str) -> str | None:
+        # Variant titles look like "أسود / 128 جيجابايت / 8 جيجابايت".
+        for color in ARABIC_COLORS:  # longest names first in the list
+            if color in text:
+                return color
+        return None
 
     def _storage_from_text(self, text: str) -> int | None:
         m = re.search(r"(\d+)\s*(GB|TB|جيجا|تيرا)", text, re.IGNORECASE)

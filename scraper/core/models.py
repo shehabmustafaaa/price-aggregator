@@ -19,6 +19,7 @@ class RawOffer:
     model_number: Optional[str] = None
     attrs: dict[str, Any] = field(default_factory=dict)
     image_url: Optional[str] = None
+    image_urls: list[str] = field(default_factory=list)
 
 
 @dataclass

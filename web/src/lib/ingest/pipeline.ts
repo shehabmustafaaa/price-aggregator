@@ -104,10 +104,12 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
           condition: raw.condition,
           warrantyType: raw.warranty_type,
           regionVersion: raw.region_version ?? null,
+          attrs: JSON.parse(JSON.stringify(raw.attrs ?? {})),
           lastSeenAt: now,
         },
         update: {
           titleRaw: raw.title,
+          attrs: JSON.parse(JSON.stringify(raw.attrs ?? {})),
           price: raw.price,
           shippingCost: raw.shipping_cost ?? null,
           inStock: raw.in_stock,
@@ -118,8 +120,14 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         },
       });
 
-      // Backfill product image from the store listing if we have none.
-      if (raw.image_url) {
+      // Backfill product images from the store listing if we have none.
+      const listingImages =
+        raw.image_urls.length > 0
+          ? raw.image_urls
+          : raw.image_url
+            ? [raw.image_url]
+            : [];
+      if (listingImages.length > 0) {
         const variant = await prisma.productVariant.findUnique({
           where: { id: productVariantId },
           include: { product: { select: { id: true, images: true } } },
@@ -127,7 +135,7 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         if (variant && variant.product.images.length === 0) {
           await prisma.product.update({
             where: { id: variant.product.id },
-            data: { images: [raw.image_url] },
+            data: { images: listingImages.slice(0, 6) },
           });
         }
       }

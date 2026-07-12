@@ -17,6 +17,7 @@ export const rawOfferSchema = z.object({
   // Variant attributes the scraper could extract, e.g. {"storage_gb":256,"color":"black"}
   attrs: z.record(z.string(), z.unknown()).default({}),
   image_url: z.string().url().nullable().optional(),
+  image_urls: z.array(z.string().url()).default([]),
 });
 
 export const ingestPayloadSchema = z.object({
