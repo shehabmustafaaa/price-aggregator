@@ -4,6 +4,8 @@ import { matchOffer } from "./match";
 import { isPriceSane } from "./sanity";
 import { runPostIngestHooks, type PriceChangeEvent } from "./hooks";
 import { canonicalColor } from "@/lib/catalog/colors";
+import { autoCreateProduct } from "./autocreate";
+import { AUTO_APPROVE_KEY, getBoolSetting } from "@/lib/settings";
 import "@/lib/alerts/hook"; // registers the price-alert post-ingest hook
 
 export interface IngestResult {
@@ -40,7 +42,9 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
   let upserted = 0;
   let rejects = 0;
   let sentToReview = 0;
+  let autoCreated = 0;
   const events: PriceChangeEvent[] = [];
+  const autoApprove = await getBoolSetting(AUTO_APPROVE_KEY, true);
 
   for (const raw of payload.offers) {
     try {
@@ -69,10 +73,18 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         continue;
       }
 
-      let productVariantId = existing?.productVariantId ?? null;
+      let productVariantId: number | undefined =
+        existing?.productVariantId ?? undefined;
       if (!productVariantId) {
         const match = await matchOffer(raw, category.id);
-        if (!match.productVariantId) {
+        if (match.productVariantId) {
+          productVariantId = match.productVariantId;
+        } else if (autoApprove) {
+          // Auto-approve default: create the product on the spot. Offers
+          // later in the same run for the same base name will match it.
+          productVariantId = await autoCreateProduct(raw, category.id);
+          autoCreated++;
+        } else {
           sentToReview++;
           const alreadyQueued = await prisma.matchReview.findFirst({
             where: { storeId: store.id, rawUrl: raw.url, status: "pending" },
@@ -91,7 +103,6 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
           }
           continue;
         }
-        productVariantId = match.productVariantId;
       }
 
       // The offer is attached to a product — clear any review rows queued
@@ -187,7 +198,13 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
       offersSeen: payload.offers.length,
       offersUpserted: upserted,
       rejects,
-      note: sentToReview > 0 ? `${sentToReview} offers sent to match review` : null,
+      note:
+        [
+          autoCreated > 0 ? `${autoCreated} products auto-created` : null,
+          sentToReview > 0 ? `${sentToReview} offers sent to match review` : null,
+        ]
+          .filter(Boolean)
+          .join("; ") || null,
     },
   });
 

@@ -1,6 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 import { getScraperOverview } from "@/lib/scraper/jobs";
-import { runNowAction, updateConfigAction } from "./actions";
+import { AUTO_APPROVE_KEY, getBoolSetting } from "@/lib/settings";
+import {
+  runNowAction,
+  toggleAutoApproveAction,
+  updateConfigAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +27,38 @@ export default async function ScraperAdminPage({
   }
 
   const { stores, jobs, runs } = await getScraperOverview();
+  const autoApprove = await getBoolSetting(AUTO_APPROVE_KEY, true);
 
   return (
     <div className="space-y-8">
       <section>
         <h1 className="text-xl font-bold mb-4">Scraper control</h1>
+
+        <form
+          action={toggleAutoApproveAction}
+          className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-4 flex flex-wrap items-center gap-3 text-sm"
+        >
+          <input type="hidden" name="key" value={key} />
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="autoApprove"
+              defaultChecked={autoApprove}
+            />
+            <span className="font-medium">
+              Auto-approve unmatched offers (create products automatically)
+            </span>
+          </label>
+          <span className="text-gray-400">
+            When off, unmatched offers wait in the match-review queue instead.
+          </span>
+          <button
+            type="submit"
+            className="rounded-lg border border-gray-700 bg-gray-950 px-3 py-1.5 hover:border-blue-500"
+          >
+            Save
+          </button>
+        </form>
         <div className="space-y-3">
           {stores.map((s) => (
             <div

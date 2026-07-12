@@ -23,8 +23,14 @@ export async function generateMetadata({
       default: t("siteName"),
       template: `%s | ${t("siteName")}`,
     },
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, title: t("siteName") },
   };
 }
+
+export const viewport = {
+  themeColor: "#0b0f17",
+};
 
 export default async function LocaleLayout({
   children,
