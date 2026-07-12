@@ -41,22 +41,75 @@ export interface CategoryFilters {
   minPrice?: number;
   maxPrice?: number;
   sort?: "price_asc" | "price_desc" | "newest";
+  ramGb?: number[];
+  storageGb?: number[];
 }
 
 export async function listCategoryProducts(
   categoryId: number,
   filters: CategoryFilters = {},
 ) {
+  const specConditions = [
+    ...(filters.storageGb?.length
+      ? [
+          {
+            OR: filters.storageGb.map((v) => ({
+              attrs: { path: ["storage_gb"], equals: v },
+            })),
+          },
+        ]
+      : []),
+    ...(filters.ramGb?.length
+      ? [
+          {
+            OR: filters.ramGb.map((v) => ({
+              attrs: { path: ["ram_gb"], equals: v },
+            })),
+          },
+        ]
+      : []),
+  ];
+
   const products = await prisma.product.findMany({
     where: {
       categoryId,
       ...(filters.brandSlug ? { brand: { slug: filters.brandSlug } } : {}),
+      ...(specConditions.length
+        ? { variants: { some: { AND: specConditions } } }
+        : {}),
     },
     include: productListInclude,
     orderBy: { createdAt: "desc" },
     take: 60,
   });
   return applyPriceFilterAndSort(products, filters);
+}
+
+/** Distinct RAM/storage values present in a category's variants — drives
+ *  which facet chips render. Cheap at catalog scale; cache later if needed. */
+export async function getSpecFacets(categoryId: number) {
+  const variants = await prisma.productVariant.findMany({
+    where: { product: { categoryId } },
+    select: { attrs: true },
+  });
+  const ram = new Set<number>();
+  const storage = new Set<number>();
+  for (const v of variants) {
+    const attrs = (v.attrs ?? {}) as Record<string, unknown>;
+    // Plausibility bounds keep mis-parsed values (RAM leaking into storage
+    // and vice versa) out of the facet chips. Filtering still works on any
+    // value; this only governs which chips are offered.
+    if (typeof attrs.ram_gb === "number" && attrs.ram_gb <= 24) {
+      ram.add(attrs.ram_gb);
+    }
+    if (typeof attrs.storage_gb === "number" && attrs.storage_gb >= 32) {
+      storage.add(attrs.storage_gb);
+    }
+  }
+  return {
+    ramGb: [...ram].sort((a, b) => a - b),
+    storageGb: [...storage].sort((a, b) => a - b),
+  };
 }
 
 export async function listLatestProducts(take = 12) {
