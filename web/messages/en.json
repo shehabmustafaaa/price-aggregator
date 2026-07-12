@@ -34,6 +34,7 @@
     "colors": "Colors",
     "priceHistory": "Price history (90 days)",
     "account": "Account",
+    "dealsNav": "Deals",
     "targetPrice": "Target price",
     "setAlert": "Set price alert",
     "updateAlert": "Update alert",
@@ -41,6 +42,20 @@
     "inFavorites": "In favorites",
     "allColors": "All colors",
     "noOffers": "No fresh offers right now — check back soon."
+  },
+  "deals": {
+    "title": "Deals",
+    "bestDealsTitle": "Best deals",
+    "bestDealsSubtitle": "Where picking the right store saves you the most.",
+    "seeAll": "See all",
+    "saveBadge": "Save {pct}%",
+    "spreadSubtitle": "{stores} stores · up to {high} EGP elsewhere",
+    "empty": "No cross-store deals yet — more stores are coming.",
+    "dropsTitle": "Price drops",
+    "dropsSubtitle": "Recently cheaper than their 30-day high.",
+    "dropBadge": "-{pct}%",
+    "dropSubtitle": "{store} · was {was} EGP",
+    "dropsEmpty": "No tracked price drops yet — check back as prices move."
   },
   "account": {
     "title": "Sign in or create an account",

@@ -34,6 +34,7 @@
     "colors": "الألوان",
     "priceHistory": "تاريخ السعر (٩٠ يوم)",
     "account": "حسابي",
+    "dealsNav": "العروض",
     "targetPrice": "السعر المستهدف",
     "setAlert": "نبهني لو السعر قل",
     "updateAlert": "تعديل التنبيه",
@@ -41,6 +42,20 @@
     "inFavorites": "في المفضلة",
     "allColors": "كل الألوان",
     "noOffers": "لا توجد عروض حديثة الآن — عد قريباً."
+  },
+  "deals": {
+    "title": "العروض",
+    "bestDealsTitle": "أفضل العروض",
+    "bestDealsSubtitle": "المنتجات اللي اختيار المتجر الصح فيها بيوفّرلك أكتر.",
+    "seeAll": "عرض الكل",
+    "saveBadge": "وفّر {pct}%",
+    "spreadSubtitle": "{stores} متاجر · يوصل لـ {high} جنيه في مكان تاني",
+    "empty": "لا توجد عروض مقارنة بعد — متاجر جديدة قادمة.",
+    "dropsTitle": "انخفاضات الأسعار",
+    "dropsSubtitle": "أرخص من أعلى سعر خلال ٣٠ يوم.",
+    "dropBadge": "-{pct}%",
+    "dropSubtitle": "{store} · كان {was} جنيه",
+    "dropsEmpty": "لا توجد انخفاضات مسجلة بعد — تابعنا مع تغيّر الأسعار."
   },
   "account": {
     "title": "سجل دخولك أو أنشئ حساباً",

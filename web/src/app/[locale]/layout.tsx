@@ -60,6 +60,12 @@ export default async function LocaleLayout({
                 <SearchBox />
               </div>
               <Link
+                href="/deals"
+                className="text-sm text-gray-400 hover:text-gray-100 shrink-0"
+              >
+                {t("dealsNav")}
+              </Link>
+              <Link
                 href="/account"
                 className="text-sm text-gray-400 hover:text-gray-100 shrink-0"
               >

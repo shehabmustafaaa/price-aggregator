@@ -13,6 +13,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [];
   for (const locale of routing.locales) {
     entries.push({ url: `${BASE_URL}/${locale}`, changeFrequency: "daily", priority: 1 });
+    entries.push({
+      url: `${BASE_URL}/${locale}/deals`,
+      changeFrequency: "daily",
+      priority: 0.9,
+    });
     for (const c of categories) {
       entries.push({
         url: `${BASE_URL}/${locale}/c/${c.slug}`,
