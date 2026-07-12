@@ -6,6 +6,7 @@ import { getPriceHistory } from "@/lib/catalog/offers";
 import ReportPriceButton from "@/components/ReportPriceButton";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ImageGallery from "@/components/ImageGallery";
+import { colorLabel } from "@/lib/catalog/colors";
 import { Link } from "@/i18n/navigation";
 
 export async function generateMetadata({
@@ -129,7 +130,7 @@ export default async function ProductPage({
                         : "border-gray-700 bg-gray-900 hover:border-blue-500"
                     }`}
                   >
-                    {color}
+                    {colorLabel(color, locale)}
                     <span className="ms-1.5 text-xs text-gray-400">
                       {info.best.toLocaleString(numberLocale)} {t("egp")}
                     </span>
@@ -180,7 +181,7 @@ export default async function ProductPage({
                     </span>
                     {typeof offerColor === "string" && offerColor && (
                       <span className="rounded bg-gray-800 px-1.5 py-0.5 text-gray-300">
-                        {offerColor}
+                        {colorLabel(offerColor, locale)}
                       </span>
                     )}
                     {offer.warrantyType === "OFFICIAL_LOCAL" && (

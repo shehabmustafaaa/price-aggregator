@@ -3,6 +3,7 @@ import type { IngestPayload } from "./schema";
 import { matchOffer } from "./match";
 import { isPriceSane } from "./sanity";
 import { runPostIngestHooks, type PriceChangeEvent } from "./hooks";
+import { canonicalColor } from "@/lib/catalog/colors";
 
 export interface IngestResult {
   scrapeRunId: number;
@@ -42,6 +43,11 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
 
   for (const raw of payload.offers) {
     try {
+      // Colors are canonicalized at ingest — the ONLY place — so every
+      // store's spelling ("Black", "اسود", "Ink Black") maps to one key.
+      if (typeof raw.attrs?.color === "string") {
+        raw.attrs.color = canonicalColor(raw.attrs.color);
+      }
       const existing = await prisma.offer.findUnique({
         where: { storeId_url: { storeId: store.id, url: raw.url } },
       });
