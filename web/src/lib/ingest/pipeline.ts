@@ -87,6 +87,13 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         productVariantId = match.productVariantId;
       }
 
+      // The offer is attached to a product — clear any review rows queued
+      // for it before the catalog knew this product.
+      await prisma.matchReview.updateMany({
+        where: { storeId: store.id, rawUrl: raw.url, status: "pending" },
+        data: { status: "approved" },
+      });
+
       const oldPrice = existing ? Number(existing.price) : null;
       const now = new Date();
 

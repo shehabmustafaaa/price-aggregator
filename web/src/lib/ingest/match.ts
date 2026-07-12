@@ -77,9 +77,23 @@ export async function matchOffer(
   return { productVariantId: null, confidence: best?.score ?? 0 };
 }
 
+/** Normalize Arabic orthography so spelling variants compare equal:
+ *  alef forms (أ إ آ ا), taa marbuta (ة/ه), alef maqsura (ى/ي),
+ *  tatweel and diacritics. "ألترا" and "الترا" must match. */
+function normalizeArabic(text: string): string {
+  return text
+    .replace(/[ً-ٰٟ]/g, "") // diacritics
+    .replace(/ـ/g, "") // tatweel
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي");
+}
+
 function tokenize(text: string): Set<string> {
   return new Set(
-    text
+    normalizeArabic(text)
       .toLowerCase()
       .replace(/[^\p{L}\p{N}+]+/gu, " ")
       .split(/\s+/)

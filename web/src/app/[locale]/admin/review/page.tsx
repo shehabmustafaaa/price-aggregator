@@ -29,7 +29,7 @@ export default async function ReviewPage({
       <h1 className="text-xl font-bold">
         Match review queue ({reviews.length} shown)
       </h1>
-      {reviews.map((r) => {
+      {reviews.map(({ representative: r, variantCount }) => {
         const raw = r.rawPayload as unknown as RawOffer;
         return (
           <div
@@ -46,7 +46,14 @@ export default async function ReviewPage({
                 />
               )}
               <div className="flex-1 min-w-60">
-                <p className="font-medium">{r.rawTitle}</p>
+                <p className="font-medium">
+                  {r.rawTitle}
+                  {variantCount > 1 && (
+                    <span className="ms-2 rounded bg-gray-800 px-1.5 py-0.5 text-xs text-gray-300">
+                      +{variantCount - 1} variants
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-gray-400">
                   {Number(raw.price).toLocaleString("en-EG")} EGP ·{" "}
                   {raw.brand ?? "no brand"} · attrs{" "}

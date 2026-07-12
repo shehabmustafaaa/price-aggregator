@@ -88,7 +88,8 @@ def daemon(poll_seconds: int) -> int:
             httpx.post(
                 f"{base}/api/scraper/complete",
                 headers=headers,
-                json={"job_id": job_id, "status": status, "note": note},
+                json={"job_id": job_id, "status": status}
+                | ({"note": note} if note else {}),
                 timeout=30,
             ).raise_for_status()
         except Exception as exc:

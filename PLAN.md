@@ -148,6 +148,23 @@ These exist so Phase 2/3 features slot in without rewrites. Any Phase 1 code vio
 15. Config/secrets only via env vars (`DATABASE_URL`, `INGEST_SECRET`) — local → aaPanel deploy is env swap only.
 16. Mobile-first responsive from the first component; PWA (Phase 2) must not require redesign.
 
+## 7. Build Log & Ops Notes (Phase 1 executed 2026-07-11/12)
+Phase 1 is BUILT and verified E2E. Also delivered beyond original scope: match-review admin
+(`/admin/review?key=…`, grouped per product, auto-resolves once offers match), scraper control
+plane (`/admin/scraper?key=…`: per-store enabled/interval/request-delay, Run now, jobs+runs audit),
+Python daemon (`python main.py daemon`), color variants with per-color best price, image galleries,
+dark theme (default), Arabic orthography normalization in the matcher (alef/hamza variants).
+
+**Ops rules learned the hard way:**
+- Run EXACTLY ONE daemon instance (pm2/systemd on the server). Multiple instances race job claims
+  and orphan statuses. Stale RUNNING jobs (>30 min) auto-fail via claimNextJob self-heal.
+- Always run the daemon with `python -u` and a log file; buffered output vanishes on kill.
+- Dream2000 rate-limits products.json hard (429 even at 5s delay on page 2+); backoff honors
+  Retry-After, and pagination stops when a page returns < limit.
+- Matching precision requires digit-token + qualifier guards (A17≠A56, 16≠16 Pro) AND Arabic
+  normalization; plain token overlap produced false matches. Catalog grows via review-approve →
+  next scrape auto-attaches all variants of the approved product.
+
 ## Verification
 - Pipeline: run a store adapter against 20 known products; assert offers land in `offers` with correct product matches and `price_history` rows accrue on price change.
 - E2E: seed DB, `next build && next start`, check product page renders offers ranked by total cost, filters work, AR/RTL renders, Lighthouse SEO pass.

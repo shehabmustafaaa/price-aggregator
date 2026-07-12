@@ -5,7 +5,7 @@ import { completeJob } from "@/lib/scraper/jobs";
 const schema = z.object({
   job_id: z.number().int().positive(),
   status: z.enum(["DONE", "FAILED"]),
-  note: z.string().optional(),
+  note: z.string().nullish(),
 });
 
 export async function POST(req: NextRequest) {
@@ -17,6 +17,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
   }
-  await completeJob(parsed.data.job_id, parsed.data.status, parsed.data.note);
+  await completeJob(
+    parsed.data.job_id,
+    parsed.data.status,
+    parsed.data.note ?? undefined,
+  );
   return NextResponse.json({ ok: true });
 }

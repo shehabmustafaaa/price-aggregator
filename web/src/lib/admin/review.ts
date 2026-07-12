@@ -1,12 +1,32 @@
 import { prisma } from "@/lib/db";
 import type { RawOffer } from "@/lib/ingest/schema";
 
-export async function listPendingReviews(take = 50) {
-  return prisma.matchReview.findMany({
+export interface GroupedReview {
+  representative: Awaited<
+    ReturnType<typeof prisma.matchReview.findMany>
+  >[number];
+  variantCount: number;
+}
+
+/** Group pending reviews by product page (URL without ?variant=…) so one
+ *  card represents a product, not each of its color/storage listings. */
+export async function listPendingReviews(take = 30): Promise<GroupedReview[]> {
+  const rows = await prisma.matchReview.findMany({
     where: { status: "pending" },
     orderBy: { id: "asc" },
-    take,
+    take: 500,
   });
+  const groups = new Map<string, GroupedReview>();
+  for (const row of rows) {
+    const base = row.rawUrl.split("?")[0];
+    const existing = groups.get(base);
+    if (existing) {
+      existing.variantCount++;
+    } else {
+      groups.set(base, { representative: row, variantCount: 1 });
+    }
+  }
+  return [...groups.values()].slice(0, take);
 }
 
 export interface ApproveInput {
