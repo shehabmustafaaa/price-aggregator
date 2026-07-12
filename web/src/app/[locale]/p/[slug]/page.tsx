@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { getProductBySlug } from "@/lib/catalog/products";
+import { getPriceHistory } from "@/lib/catalog/offers";
 import ReportPriceButton from "@/components/ReportPriceButton";
+import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ImageGallery from "@/components/ImageGallery";
 import { Link } from "@/i18n/navigation";
 
@@ -31,6 +33,7 @@ export default async function ProductPage({
 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
+  const history = await getPriceHistory(product.id, 90);
 
   const name = locale === "ar" ? product.nameAr : product.nameEn;
   const numberLocale = locale === "ar" ? "ar-EG" : "en-EG";
@@ -137,6 +140,17 @@ export default async function ProductPage({
           )}
         </div>
       </div>
+
+      {history.length >= 2 && (
+        <section>
+          <h2 className="text-lg font-semibold mb-3">{t("priceHistory")}</h2>
+          <PriceHistoryChart
+            history={history}
+            currencyLabel={t("egp")}
+            locale={locale}
+          />
+        </section>
+      )}
 
       <section>
         <h2 className="text-lg font-semibold mb-3">
