@@ -1,26 +1,21 @@
 import { setRequestLocale } from "next-intl/server";
+import { getAdminUser } from "@/lib/auth/admin";
 import { listPendingReviews } from "@/lib/admin/review";
 import type { RawOffer } from "@/lib/ingest/schema";
+import AdminGate from "@/components/AdminGate";
 import { approveAction, rejectAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-/** Internal match-review tool (English-only, key-protected):
- *  /admin/review?key=<ADMIN_SECRET> */
+/** Internal match-review tool (English-only, admins only): /admin/review */
 export default async function ReviewPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ key?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { key } = await searchParams;
-
-  if (!process.env.ADMIN_SECRET || key !== process.env.ADMIN_SECRET) {
-    return <p className="text-red-400">Unauthorized — append ?key=…</p>;
-  }
+  if (!(await getAdminUser())) return <AdminGate />;
 
   const reviews = await listPendingReviews(30);
 
@@ -74,7 +69,6 @@ export default async function ReviewPage({
               action={approveAction}
               className="flex flex-wrap items-end gap-2 text-sm"
             >
-              <input type="hidden" name="key" value={key} />
               <input type="hidden" name="reviewId" value={r.id} />
               <input type="hidden" name="categorySlug" value="mobile-phones" />
               <Field name="nameEn" label="Name (EN)" />
@@ -89,7 +83,6 @@ export default async function ReviewPage({
               </button>
             </form>
             <form action={rejectAction} className="text-sm">
-              <input type="hidden" name="key" value={key} />
               <input type="hidden" name="reviewId" value={r.id} />
               <button
                 type="submit"

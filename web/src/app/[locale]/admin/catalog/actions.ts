@@ -1,21 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth/admin";
 import {
   deleteProduct,
   mergeProducts,
   updateProduct,
 } from "@/lib/admin/catalog";
 
-function checkKey(formData: FormData) {
-  const key = formData.get("key");
-  if (!process.env.ADMIN_SECRET || key !== process.env.ADMIN_SECRET) {
-    throw new Error("unauthorized");
-  }
-}
-
 export async function updateProductAction(formData: FormData) {
-  checkKey(formData);
+  await requireAdmin();
   await updateProduct(Number(formData.get("productId")), {
     nameEn: String(formData.get("nameEn") || ""),
     nameAr: String(formData.get("nameAr") || ""),
@@ -25,13 +19,13 @@ export async function updateProductAction(formData: FormData) {
 }
 
 export async function deleteProductAction(formData: FormData) {
-  checkKey(formData);
+  await requireAdmin();
   await deleteProduct(Number(formData.get("productId")));
   revalidatePath("/admin/catalog");
 }
 
 export async function mergeProductAction(formData: FormData) {
-  checkKey(formData);
+  await requireAdmin();
   await mergeProducts(
     Number(formData.get("productId")),
     Number(formData.get("targetId")),

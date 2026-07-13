@@ -1,5 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
+import { getAdminUser } from "@/lib/auth/admin";
 import { listProductsForAdmin } from "@/lib/admin/catalog";
+import AdminGate from "@/components/AdminGate";
 import {
   deleteProductAction,
   mergeProductAction,
@@ -8,23 +10,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Catalog quality tool (English-only, key-protected):
- *  /admin/catalog?key=<ADMIN_SECRET>&q=<search>
+/** Catalog quality tool (English-only, admins only):
+ *  /admin/catalog?q=<search>
  *  Edit names/slugs, delete junk (accessories), merge duplicates. */
 export default async function CatalogAdminPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ key?: string; q?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { key, q = "" } = await searchParams;
-
-  if (!process.env.ADMIN_SECRET || key !== process.env.ADMIN_SECRET) {
-    return <p className="text-red-400">Unauthorized — append ?key=…</p>;
-  }
+  if (!(await getAdminUser())) return <AdminGate />;
+  const { q = "" } = await searchParams;
 
   const products = await listProductsForAdmin(q);
 
@@ -33,7 +32,6 @@ export default async function CatalogAdminPage({
       <h1 className="text-xl font-bold">Catalog ({products.length} shown)</h1>
 
       <form method="get" className="flex gap-2 text-sm">
-        <input type="hidden" name="key" value={key} />
         <input
           type="search"
           name="q"
@@ -83,7 +81,6 @@ export default async function CatalogAdminPage({
                 action={updateProductAction}
                 className="flex flex-wrap items-end gap-2 text-sm"
               >
-                <input type="hidden" name="key" value={key} />
                 <input type="hidden" name="productId" value={p.id} />
                 <Field name="nameEn" label="Name (EN)" defaultValue={p.nameEn} wide />
                 <Field name="nameAr" label="Name (AR)" defaultValue={p.nameAr} wide />
@@ -95,8 +92,7 @@ export default async function CatalogAdminPage({
 
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <form action={mergeProductAction} className="flex items-center gap-2">
-                  <input type="hidden" name="key" value={key} />
-                  <input type="hidden" name="productId" value={p.id} />
+                    <input type="hidden" name="productId" value={p.id} />
                   <input
                     type="number"
                     name="targetId"
@@ -108,8 +104,7 @@ export default async function CatalogAdminPage({
                   </button>
                 </form>
                 <form action={deleteProductAction}>
-                  <input type="hidden" name="key" value={key} />
-                  <input type="hidden" name="productId" value={p.id} />
+                    <input type="hidden" name="productId" value={p.id} />
                   <button className="text-gray-500 underline hover:text-red-400">
                     Delete product + offers
                   </button>

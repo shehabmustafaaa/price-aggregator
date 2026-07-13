@@ -6,6 +6,7 @@ import { routing } from "@/i18n/routing";
 import { Link } from "@/i18n/navigation";
 import "../globals.css";
 import SearchBox from "@/components/SearchBox";
+import { getAdminUser } from "@/lib/auth/admin";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -46,6 +47,7 @@ export default async function LocaleLayout({
   const t = await getTranslations({ locale, namespace: "common" });
   const dir = locale === "ar" ? "rtl" : "ltr";
   const otherLocale = locale === "ar" ? "en" : "ar";
+  const admin = await getAdminUser();
 
   return (
     <html lang={locale} dir={dir} className="h-full antialiased">
@@ -71,6 +73,14 @@ export default async function LocaleLayout({
               >
                 {t("account")}
               </Link>
+              {admin && (
+                <Link
+                  href="/admin/scraper"
+                  className="text-sm text-amber-400 hover:text-amber-300 shrink-0"
+                >
+                  Admin
+                </Link>
+              )}
               <Link
                 href="/"
                 locale={otherLocale}

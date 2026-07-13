@@ -212,6 +212,7 @@ model User {
   passwordHash String?  @map("password_hash")
   phone        String?
   locale       String   @default("ar")
+  isAdmin      Boolean  @default(false) @map("is_admin")
   createdAt    DateTime @default(now()) @map("created_at")
 
   priceAlerts PriceAlert[]

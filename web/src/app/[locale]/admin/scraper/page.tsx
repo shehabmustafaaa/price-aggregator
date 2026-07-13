@@ -1,6 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
+import { getAdminUser } from "@/lib/auth/admin";
 import { getScraperOverview } from "@/lib/scraper/jobs";
 import { AUTO_APPROVE_KEY, getBoolSetting } from "@/lib/settings";
+import AdminGate from "@/components/AdminGate";
 import {
   runNowAction,
   toggleAutoApproveAction,
@@ -9,22 +11,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Scraper control + audit (English-only, key-protected):
- *  /admin/scraper?key=<ADMIN_SECRET> */
+/** Scraper control + audit (English-only, admins only): /admin/scraper */
 export default async function ScraperAdminPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ key?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { key } = await searchParams;
-
-  if (!process.env.ADMIN_SECRET || key !== process.env.ADMIN_SECRET) {
-    return <p className="text-red-400">Unauthorized — append ?key=…</p>;
-  }
+  if (!(await getAdminUser())) return <AdminGate />;
 
   const { stores, jobs, runs } = await getScraperOverview();
   const autoApprove = await getBoolSetting(AUTO_APPROVE_KEY, true);
@@ -38,7 +33,6 @@ export default async function ScraperAdminPage({
           action={toggleAutoApproveAction}
           className="mb-4 rounded-xl border border-gray-800 bg-gray-900 p-4 flex flex-wrap items-center gap-3 text-sm"
         >
-          <input type="hidden" name="key" value={key} />
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -73,8 +67,7 @@ export default async function ScraperAdminPage({
                 action={updateConfigAction}
                 className="flex flex-wrap items-end gap-3 text-sm"
               >
-                <input type="hidden" name="key" value={key} />
-                <input type="hidden" name="storeId" value={s.id} />
+                      <input type="hidden" name="storeId" value={s.id} />
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -114,8 +107,7 @@ export default async function ScraperAdminPage({
                 </button>
               </form>
               <form action={runNowAction}>
-                <input type="hidden" name="key" value={key} />
-                <input type="hidden" name="storeId" value={s.id} />
+                      <input type="hidden" name="storeId" value={s.id} />
                 <button
                   type="submit"
                   className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
