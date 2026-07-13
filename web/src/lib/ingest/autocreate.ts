@@ -35,7 +35,7 @@ function slugFromUrl(url: string): string {
 export async function autoCreateProduct(
   raw: RawOffer,
   categoryId: number,
-): Promise<number /* productVariantId */> {
+): Promise<number /* productId */> {
   const baseName = deriveBaseName(raw.title);
   let slug = slugify(baseName) || slugFromUrl(raw.url) || `product-${Date.now()}`;
 
@@ -53,9 +53,7 @@ export async function autoCreateProduct(
     brandId = brand.id;
   }
 
-  const attrs = { ...(raw.attrs ?? {}) };
-  delete attrs.color; // color is offer-level, not variant-level
-
+  // Variants are created on demand by resolveVariant, keyed on storage+network.
   const product = await prisma.product.create({
     data: {
       categoryId,
@@ -70,12 +68,8 @@ export async function autoCreateProduct(
         : raw.image_url
           ? [raw.image_url]
           : [],
-      variants: {
-        create: [{ attrs: JSON.parse(JSON.stringify(attrs)) }],
-      },
     },
-    include: { variants: true },
   });
 
-  return product.variants[0].id;
+  return product.id;
 }

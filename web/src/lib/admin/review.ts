@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { RawOffer } from "@/lib/ingest/schema";
+import { resolveVariant, variantConfig } from "@/lib/ingest/variant";
 
 export interface GroupedReview {
   representative: Awaited<
@@ -75,15 +76,19 @@ export async function approveReview(input: ApproveInput) {
       nameEn: input.nameEn.trim(),
       nameAr: input.nameAr.trim(),
       images: raw.image_url ? [raw.image_url] : [],
-      variants: { create: [{ attrs: raw.attrs ?? {} }] },
     },
-    include: { variants: true },
   });
+
+  const variantId = await resolveVariant(
+    prisma,
+    product.id,
+    variantConfig(raw.attrs ?? {}, raw.title),
+  );
 
   const now = new Date();
   const offer = await prisma.offer.create({
     data: {
-      productVariantId: product.variants[0].id,
+      productVariantId: variantId,
       storeId: review.storeId,
       url: raw.url,
       titleRaw: raw.title,
@@ -94,6 +99,7 @@ export async function approveReview(input: ApproveInput) {
       condition: raw.condition ?? "NEW",
       warrantyType: raw.warranty_type ?? "UNKNOWN",
       regionVersion: raw.region_version ?? null,
+      attrs: JSON.parse(JSON.stringify(raw.attrs ?? {})),
       lastSeenAt: now,
     },
   });
@@ -108,7 +114,7 @@ export async function approveReview(input: ApproveInput) {
 
   await prisma.matchReview.update({
     where: { id: review.id },
-    data: { status: "approved", suggestedProductVariantId: product.variants[0].id },
+    data: { status: "approved", suggestedProductVariantId: variantId },
   });
 
   return product;

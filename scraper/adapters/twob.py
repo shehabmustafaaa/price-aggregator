@@ -116,18 +116,24 @@ class TwoBAdapter:
         image = item.css("img.product-image-photo::attr(src)").get()
         in_stock = not bool(item.css(".stock.unavailable").get())
 
+        # Title segments: "Galaxy A17 4G - 4GB Ram - 128GB - Blue".
+        # RAM is the "NNGb Ram" segment; storage is the bare "NNGb" segment
+        # (never confuse the two — the RAM value must not become storage).
         attrs: dict = {}
-        storage = STORAGE_RE.search(title)
-        if storage:
-            value = int(storage.group(1))
-            if storage.group(2).upper() == "TB":
-                value *= 1024
-            attrs["storage_gb"] = value
-        ram = RAM_RE.search(title)
-        if ram:
-            attrs["ram_gb"] = int(ram.group(1) or ram.group(2))
-        # Titles end with the color: "… - 128GB - Ink Black"
         segments = [s.strip() for s in title.split(" - ")]
+        for seg in segments:
+            low = seg.lower()
+            m = re.match(r"^(\d+)\s*(gb|tb)\b", low)
+            if not m:
+                continue
+            value = int(m.group(1))
+            if m.group(2) == "tb":
+                value *= 1024
+            if "ram" in low:
+                attrs["ram_gb"] = value
+            elif value >= 32:  # real phone storage; guards against stray RAM
+                attrs["storage_gb"] = value
+        # Color is the trailing non-numeric segment.
         if len(segments) >= 2 and not re.search(r"\d", segments[-1]):
             attrs["color"] = segments[-1]
 

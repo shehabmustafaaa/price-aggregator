@@ -5,6 +5,7 @@ import { isPriceSane } from "./sanity";
 import { runPostIngestHooks, type PriceChangeEvent } from "./hooks";
 import { canonicalColor } from "@/lib/catalog/colors";
 import { autoCreateProduct } from "./autocreate";
+import { resolveVariant, variantConfig } from "./variant";
 import { AUTO_APPROVE_KEY, getBoolSetting } from "@/lib/settings";
 import "@/lib/alerts/hook"; // registers the price-alert post-ingest hook
 
@@ -73,16 +74,24 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         continue;
       }
 
-      let productVariantId: number | undefined =
-        existing?.productVariantId ?? undefined;
-      if (!productVariantId) {
+      // Resolve the product this offer belongs to. Existing offers keep
+      // their product; new ones match or auto-create.
+      let productId: number | undefined;
+      if (existing) {
+        const v = await prisma.productVariant.findUnique({
+          where: { id: existing.productVariantId },
+          select: { productId: true },
+        });
+        productId = v?.productId;
+      }
+      if (!productId) {
         const match = await matchOffer(raw, category.id);
-        if (match.productVariantId) {
-          productVariantId = match.productVariantId;
+        if (match.productId) {
+          productId = match.productId;
         } else if (autoApprove) {
           // Auto-approve default: create the product on the spot. Offers
           // later in the same run for the same base name will match it.
-          productVariantId = await autoCreateProduct(raw, category.id);
+          productId = await autoCreateProduct(raw, category.id);
           autoCreated++;
         } else {
           sentToReview++;
@@ -104,6 +113,15 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
           continue;
         }
       }
+
+      // Resolve the exact variant (storage + network) within the product,
+      // creating it if this config hasn't been seen — this is what keeps
+      // cross-store comparison like-for-like.
+      const productVariantId = await resolveVariant(
+        prisma,
+        productId,
+        variantConfig(raw.attrs, raw.title),
+      );
 
       // The offer is attached to a product — clear any review rows queued
       // for it before the catalog knew this product.
@@ -133,6 +151,7 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
           lastSeenAt: now,
         },
         update: {
+          productVariantId, // re-point if the resolved variant changed
           titleRaw: raw.title,
           attrs: JSON.parse(JSON.stringify(raw.attrs ?? {})),
           price: raw.price,
