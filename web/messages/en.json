@@ -30,6 +30,8 @@
     "apply": "Apply",
     "clearFilters": "Clear filters",
     "resultsCount": "{count} products",
+    "prev": "Previous",
+    "next": "Next",
     "offers": "Offers",
     "colors": "Colors",
     "priceHistory": "Price history (90 days)",

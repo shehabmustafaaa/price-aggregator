@@ -23,7 +23,7 @@ function parseNums(raw: string | string[] | undefined): number[] {
 function buildHref(
   slug: string,
   base: CategoryFilters,
-  overrides: Partial<Record<string, string | number[] | undefined>>,
+  overrides: Partial<Record<string, string | number | number[] | undefined>>,
 ): string {
   const params = new URLSearchParams();
   const merged: Record<string, unknown> = {
@@ -77,12 +77,14 @@ export default async function CategoryPage({
     ramGb: parseNums(sp.ram),
     storageGb: parseNums(sp.storage),
   };
+  const requestedPage = typeof sp.page === "string" ? Number(sp.page) : 1;
 
-  const [products, brands, facets] = await Promise.all([
-    listCategoryProducts(category.id, filters),
+  const [paged, brands, facets] = await Promise.all([
+    listCategoryProducts(category.id, filters, requestedPage),
     listBrandsInCategory(category.id),
     getSpecFacets(category.id),
   ]);
+  const products = paged.items;
 
   const name = locale === "ar" ? category.nameAr : category.nameEn;
   const chipBase =
@@ -217,7 +219,7 @@ export default async function CategoryPage({
       </div>
 
       <p className="text-sm text-gray-500">
-        {t("resultsCount", { count: products.length })}
+        {t("resultsCount", { count: paged.total })}
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -225,6 +227,49 @@ export default async function CategoryPage({
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
+
+      {paged.totalPages > 1 && (
+        <nav className="flex flex-wrap items-center justify-center gap-2 pt-2">
+          {paged.page > 1 && (
+            <Link
+              href={buildHref(slug, filters, {
+                page: paged.page - 1 > 1 ? paged.page - 1 : undefined,
+              })}
+              className={`${chipBase} ${chipOff}`}
+            >
+              {t("prev")}
+            </Link>
+          )}
+          {pageWindow(paged.page, paged.totalPages).map((n) => (
+            <Link
+              key={n}
+              href={buildHref(slug, filters, { page: n > 1 ? n : undefined })}
+              className={`${chipBase} ${n === paged.page ? chipOn : chipOff}`}
+            >
+              {n}
+            </Link>
+          ))}
+          {paged.page < paged.totalPages && (
+            <Link
+              href={buildHref(slug, filters, { page: paged.page + 1 })}
+              className={`${chipBase} ${chipOff}`}
+            >
+              {t("next")}
+            </Link>
+          )}
+        </nav>
+      )}
     </div>
   );
+}
+
+/** Page numbers to show: a window of up to 5 around the current page. */
+function pageWindow(current: number, total: number): number[] {
+  const span = 2;
+  let start = Math.max(1, current - span);
+  const end = Math.min(total, start + span * 2);
+  start = Math.max(1, end - span * 2);
+  const out: number[] = [];
+  for (let i = start; i <= end; i++) out.push(i);
+  return out;
 }

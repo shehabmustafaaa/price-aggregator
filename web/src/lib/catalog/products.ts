@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { freshOfferWhere } from "./offers";
 
 const productListInclude = {
@@ -12,11 +13,11 @@ const productListInclude = {
       },
     },
   },
-};
+} satisfies Prisma.ProductInclude;
 
-export type ProductWithOffers = Awaited<
-  ReturnType<typeof listCategoryProducts>
->[number];
+export type ProductWithOffers = Prisma.ProductGetPayload<{
+  include: typeof productListInclude;
+}>;
 
 export async function getCategoryBySlug(slug: string) {
   return prisma.category.findUnique({
@@ -45,10 +46,22 @@ export interface CategoryFilters {
   storageGb?: number[];
 }
 
+export interface PagedProducts {
+  items: ProductWithOffers[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const CATEGORY_PAGE_SIZE = 24;
+
 export async function listCategoryProducts(
   categoryId: number,
   filters: CategoryFilters = {},
-) {
+  page = 1,
+  pageSize = CATEGORY_PAGE_SIZE,
+): Promise<PagedProducts> {
   const specConditions = [
     ...(filters.storageGb?.length
       ? [
@@ -70,6 +83,9 @@ export async function listCategoryProducts(
       : []),
   ];
 
+  // Fetch all products matching brand/spec filters, then price-filter, sort,
+  // and paginate in JS — price is derived from offers, not a column, so it
+  // can't be ordered/limited at the DB level. Fine at catalog scale.
   const products = await prisma.product.findMany({
     where: {
       categoryId,
@@ -80,9 +96,21 @@ export async function listCategoryProducts(
     },
     include: productListInclude,
     orderBy: { createdAt: "desc" },
-    take: 60,
+    take: 2000,
   });
-  return applyPriceFilterAndSort(products, filters);
+
+  const filtered = applyPriceFilterAndSort(products, filters);
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, page), totalPages);
+  const start = (current - 1) * pageSize;
+  return {
+    items: filtered.slice(start, start + pageSize),
+    total,
+    page: current,
+    pageSize,
+    totalPages,
+  };
 }
 
 /** Distinct RAM/storage values present in a category's variants — drives
