@@ -2,11 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { registerUser, verifyUser } from "@/lib/auth/user";
+import { changePassword, registerUser, verifyUser } from "@/lib/auth/user";
 import { createSession, destroySession, getSessionUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 
 export type AuthState = { error?: string } | undefined;
+export type ChangePwState = { error?: string; ok?: boolean } | undefined;
+
+export async function changePasswordAction(
+  _prev: ChangePwState,
+  formData: FormData,
+): Promise<ChangePwState> {
+  const userId = await getSessionUserId();
+  if (!userId) return { error: "not_signed_in" };
+  try {
+    await changePassword(
+      userId,
+      String(formData.get("current") || ""),
+      String(formData.get("next") || ""),
+    );
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "error" };
+  }
+  return { ok: true };
+}
 
 export async function registerAction(
   _prev: AuthState,

@@ -1,40 +1,67 @@
 import { prisma } from "@/lib/db";
 import { freshOfferWhere } from "./offers";
+import { normalizeText, searchTokens } from "@/lib/text";
 
 /** Single entry point for product search (guardrail #12).
- *  Backed by Postgres for now; swapping to Meilisearch changes only this module. */
+ *  Arabic-aware token matching in-app: every query token must appear in the
+ *  product's normalized text (name EN/AR + brand + model). This tolerates
+ *  spelling variants (alef/hamza), word order, and partial words that plain
+ *  substring search misses. Swapping to Meilisearch changes only this module. */
 export async function searchProducts(query: string, locale: string) {
-  const q = query.trim();
-  if (!q) return [];
+  const tokens = searchTokens(query);
+  if (tokens.length === 0) return [];
 
-  const products = await prisma.product.findMany({
-    where: {
-      OR: [
-        { nameEn: { contains: q, mode: "insensitive" } },
-        { nameAr: { contains: q, mode: "insensitive" } },
-        { modelNumber: { contains: q, mode: "insensitive" } },
-        { brand: { name: { contains: q, mode: "insensitive" } } },
-      ],
-    },
-    include: {
-      brand: true,
-      variants: {
-        include: {
-          offers: {
-            where: freshOfferWhere(),
-            include: { store: true },
-            orderBy: { price: "asc" as const },
+  const [products, titleRows] = await Promise.all([
+    prisma.product.findMany({
+      include: {
+        brand: true,
+        variants: {
+          include: {
+            offers: {
+              where: freshOfferWhere(),
+              include: { store: true },
+              orderBy: { price: "asc" as const },
+            },
           },
         },
       },
-    },
-    take: 40,
-  });
+    }),
+    // ALL offer titles (fresh or stale) — spelling knowledge for search
+    // findability doesn't expire when a price goes stale.
+    prisma.offer.findMany({
+      select: { titleRaw: true, productVariant: { select: { productId: true } } },
+    }),
+  ]);
 
-  if (products.length === 0) {
-    // Micro-feature: no-results capture drives what to add next.
-    await prisma.missedSearch.create({ data: { query: q, locale } });
+  const titlesByProduct = new Map<number, string[]>();
+  for (const row of titleRows) {
+    const pid = row.productVariant.productId;
+    const list = titlesByProduct.get(pid) ?? [];
+    list.push(row.titleRaw);
+    titlesByProduct.set(pid, list);
   }
 
-  return products;
+  const scored = products
+    .map((p) => {
+      // Include every store's listing title so any spelling any store used
+      // is searchable (e.g. B.TECH "جالكسي" vs Dream2000 "جالاكسي").
+      const offerTitles = (titlesByProduct.get(p.id) ?? []).join(" ");
+      const hay = normalizeText(
+        `${p.nameEn} ${p.nameAr} ${p.brand?.name ?? ""} ${p.modelNumber ?? ""} ${offerTitles}`,
+      );
+      const hits = tokens.filter((t) => hay.includes(t)).length;
+      const hasOffers = p.variants.some((v) => v.offers.length > 0);
+      return { p, all: hits === tokens.length, hits, hasOffers };
+    })
+    .filter((x) => x.all)
+    // In-stock products first, then most token hits.
+    .sort((a, b) => Number(b.hasOffers) - Number(a.hasOffers) || b.hits - a.hits)
+    .slice(0, 60);
+
+  if (scored.length === 0) {
+    // Micro-feature: no-results capture drives what to add next.
+    await prisma.missedSearch.create({ data: { query: query.trim(), locale } });
+  }
+
+  return scored.map((x) => x.p);
 }

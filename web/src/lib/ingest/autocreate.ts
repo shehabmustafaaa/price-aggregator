@@ -11,7 +11,13 @@ import type { RawOffer } from "./schema";
  *  Known tradeoff: two stores naming the same phone in different languages
  *  can produce duplicate products — a merge tool handles that later. */
 export function deriveBaseName(title: string): string {
-  return title.split(" - ")[0].trim() || title.trim();
+  // Drop the trailing "- color/variant" clause (Dream2000/2B), then the
+  // spec clauses that follow an Arabic/Latin comma ("، سعة… ، رام…" on
+  // B.TECH), leaving just the model name.
+  let name = title.split(" - ")[0];
+  name = name.split(/[،,]/)[0];
+  name = name.replace(/\s+/g, " ").trim();
+  return name || title.trim();
 }
 
 function slugify(text: string): string {

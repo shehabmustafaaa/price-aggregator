@@ -71,11 +71,18 @@
     "myFavorites": "My favorites",
     "noFavorites": "No favorites yet.",
     "remove": "Remove",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password (8+ characters)",
+    "passwordChanged": "Password changed.",
     "errors": {
       "invalid_email": "Please enter a valid email.",
       "weak_password": "Password must be at least 8 characters.",
       "email_taken": "This email is already registered.",
-      "bad_credentials": "Wrong email or password."
+      "bad_credentials": "Wrong email or password.",
+      "wrong_current": "Current password is incorrect.",
+      "not_signed_in": "Please sign in again.",
+      "no_password": "This account has no password set."
     }
   }
 }

@@ -32,3 +32,20 @@ export async function verifyUser(email: string, password: string) {
   const ok = await bcrypt.compare(password, user.passwordHash);
   return ok ? user : null;
 }
+
+export async function changePassword(
+  userId: number,
+  currentPassword: string,
+  newPassword: string,
+) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user?.passwordHash) throw new Error("no_password");
+  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    throw new Error("wrong_current");
+  }
+  if (newPassword.length < 8) throw new Error("weak_password");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: await bcrypt.hash(newPassword, 10) },
+  });
+}

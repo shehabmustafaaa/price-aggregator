@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { Link } from "@/i18n/navigation";
 import AuthForms from "@/components/AuthForms";
+import ChangePassword from "@/components/ChangePassword";
 import {
   deleteAlertAction,
   logoutAction,
@@ -114,6 +115,10 @@ export default async function AccountPage({
             </div>
           ))}
         </div>
+      </section>
+
+      <section>
+        <ChangePassword />
       </section>
     </div>
   );
