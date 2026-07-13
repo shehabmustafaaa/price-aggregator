@@ -6,6 +6,7 @@ import { runPostIngestHooks, type PriceChangeEvent } from "./hooks";
 import { canonicalColor } from "@/lib/catalog/colors";
 import { autoCreateProduct } from "./autocreate";
 import { resolveVariant, variantConfig } from "./variant";
+import { isAccessory } from "./classify";
 import { AUTO_APPROVE_KEY, getBoolSetting } from "@/lib/settings";
 import "@/lib/alerts/hook"; // registers the price-alert post-ingest hook
 
@@ -44,11 +45,20 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
   let rejects = 0;
   let sentToReview = 0;
   let autoCreated = 0;
+  let skippedAccessories = 0;
   const events: PriceChangeEvent[] = [];
   const autoApprove = await getBoolSetting(AUTO_APPROVE_KEY, true);
+  const isPhones = category.slug === "mobile-phones";
 
   for (const raw of payload.offers) {
     try {
+      // Keep accessories (earbuds, chargers, cases…) out of the phones
+      // catalog — stores mix them into their mobiles category pages.
+      if (isPhones && isAccessory(raw.title)) {
+        skippedAccessories++;
+        continue;
+      }
+
       // Colors are canonicalized at ingest — the ONLY place — so every
       // store's spelling ("Black", "اسود", "Ink Black") maps to one key.
       if (typeof raw.attrs?.color === "string") {
@@ -220,6 +230,9 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
       note:
         [
           autoCreated > 0 ? `${autoCreated} products auto-created` : null,
+          skippedAccessories > 0
+            ? `${skippedAccessories} accessories skipped`
+            : null,
           sentToReview > 0 ? `${sentToReview} offers sent to match review` : null,
         ]
           .filter(Boolean)
