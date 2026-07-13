@@ -43,6 +43,12 @@
     "addFavorite": "Add to favorites",
     "inFavorites": "In favorites",
     "allColors": "All colors",
+    "network": "Network",
+    "yes": "Yes",
+    "features": "Features",
+    "description": "Description",
+    "similarProducts": "Similar products",
+    "editProduct": "Edit",
     "noOffers": "No fresh offers right now — check back soon."
   },
   "deals": {

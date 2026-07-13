@@ -43,6 +43,12 @@
     "addFavorite": "أضف للمفضلة",
     "inFavorites": "في المفضلة",
     "allColors": "كل الألوان",
+    "network": "الشبكة",
+    "yes": "نعم",
+    "features": "المواصفات",
+    "description": "الوصف",
+    "similarProducts": "منتجات مشابهة",
+    "editProduct": "تعديل",
     "noOffers": "لا توجد عروض حديثة الآن — عد قريباً."
   },
   "deals": {

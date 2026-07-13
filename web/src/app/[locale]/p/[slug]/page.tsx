@@ -1,14 +1,17 @@
 import { notFound } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
-import { getProductBySlug } from "@/lib/catalog/products";
+import { getProductBySlug, getSimilarProducts } from "@/lib/catalog/products";
 import { getPriceHistory } from "@/lib/catalog/offers";
+import { buildFeatures } from "@/lib/catalog/features";
 import ReportPriceButton from "@/components/ReportPriceButton";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ImageGallery from "@/components/ImageGallery";
+import ProductCard from "@/components/ProductCard";
 import { colorLabel } from "@/lib/catalog/colors";
 import { Link } from "@/i18n/navigation";
 import { getSessionUserId } from "@/lib/auth/session";
+import { getAdminUser } from "@/lib/auth/admin";
 import { prisma } from "@/lib/db";
 import { setAlertAction, toggleFavoriteAction } from "./actions";
 
@@ -37,7 +40,11 @@ export default async function ProductPage({
 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const history = await getPriceHistory(product.id, 90);
+  const [history, similar, admin] = await Promise.all([
+    getPriceHistory(product.id, 90),
+    getSimilarProducts(product, 8),
+    getAdminUser(),
+  ]);
 
   const userId = await getSessionUserId();
   const [myAlert, myFavorite] = userId
@@ -52,7 +59,15 @@ export default async function ProductPage({
     : [null, null];
 
   const name = locale === "ar" ? product.nameAr : product.nameEn;
+  const description = locale === "ar" ? product.descriptionAr : product.descriptionEn;
   const numberLocale = locale === "ar" ? "ar-EG" : "en-EG";
+  const features = buildFeatures(product, product.category.specDefinitions, locale, {
+    storage: t("storage"),
+    ram: t("ram"),
+    network: t("network"),
+    colors: t("colors"),
+    yes: t("yes"),
+  });
 
   const allOffers = product.variants
     .flatMap((v) => v.offers)
@@ -107,7 +122,17 @@ export default async function ProductPage({
       <div className="flex flex-col sm:flex-row gap-6">
         <ImageGallery images={product.images} alt={name} />
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-2xl font-bold">{name}</h1>
+            {admin && (
+              <a
+                href={`/${locale}/admin/catalog/${product.id}`}
+                className="shrink-0 text-sm text-amber-400 hover:text-amber-300 underline"
+              >
+                {t("editProduct")}
+              </a>
+            )}
+          </div>
           {product.brand && (
             <p className="text-sm text-gray-400">{product.brand.name}</p>
           )}
@@ -280,6 +305,43 @@ export default async function ProductPage({
           })}
         </div>
       </section>
+
+      {features.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold mb-3">{t("features")}</h2>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 max-w-2xl">
+            {features.map((f) => (
+              <div
+                key={f.label}
+                className="flex justify-between gap-3 border-b border-gray-800 py-1.5 text-sm"
+              >
+                <dt className="text-gray-400">{f.label}</dt>
+                <dd className="text-end">{f.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {description && (
+        <section>
+          <h2 className="text-lg font-semibold mb-3">{t("description")}</h2>
+          <p className="text-sm text-gray-300 whitespace-pre-line max-w-2xl leading-relaxed">
+            {description}
+          </p>
+        </section>
+      )}
+
+      {similar.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold mb-3">{t("similarProducts")}</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {similar.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -140,12 +140,29 @@ export async function getSpecFacets(categoryId: number) {
   };
 }
 
-export async function listLatestProducts(take = 12) {
-  return prisma.product.findMany({
-    include: productListInclude,
-    orderBy: { createdAt: "desc" },
-    take,
-  });
+export const HOME_PAGE_SIZE = 24;
+
+export async function listLatestProducts(
+  page = 1,
+  pageSize = HOME_PAGE_SIZE,
+): Promise<PagedProducts> {
+  const [items, total] = await Promise.all([
+    prisma.product.findMany({
+      include: productListInclude,
+      orderBy: { createdAt: "desc" },
+      skip: (Math.max(1, page) - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.product.count(),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return {
+    items,
+    total,
+    page: Math.min(Math.max(1, page), totalPages),
+    pageSize,
+    totalPages,
+  };
 }
 
 export async function getProductBySlug(slug: string) {
@@ -153,7 +170,7 @@ export async function getProductBySlug(slug: string) {
     where: { slug },
     include: {
       brand: true,
-      category: true,
+      category: { include: { specDefinitions: { orderBy: { sortOrder: "asc" } } } },
       variants: {
         include: {
           offers: {
@@ -164,6 +181,35 @@ export async function getProductBySlug(slug: string) {
         },
       },
     },
+  });
+}
+
+/** Similar products: same brand first, then same category, with fresh offers
+ *  preferred. Excludes the current product. */
+export async function getSimilarProducts(
+  product: { id: number; categoryId: number; brandId: number | null },
+  take = 8,
+) {
+  const candidates = await prisma.product.findMany({
+    where: {
+      categoryId: product.categoryId,
+      id: { not: product.id },
+    },
+    include: productListInclude,
+    take: 60,
+  });
+  const sameBrand = candidates.filter((c) => c.brandId === product.brandId);
+  const others = candidates.filter((c) => c.brandId !== product.brandId);
+  const ordered = [...sameBrand, ...others].sort(
+    (a, b) => Number(bestPrice(b) != null) - Number(bestPrice(a) != null),
+  );
+  return ordered.slice(0, take);
+}
+
+export async function getProductByIdAdmin(id: number) {
+  return prisma.product.findUnique({
+    where: { id },
+    include: { brand: true, category: true },
   });
 }
 

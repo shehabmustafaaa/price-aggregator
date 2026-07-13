@@ -72,6 +72,8 @@ model Product {
   slug        String   @unique
   nameEn      String   @map("name_en")
   nameAr      String   @map("name_ar")
+  descriptionEn String? @map("description_en")
+  descriptionAr String? @map("description_ar")
   modelNumber String?  @map("model_number")
   gtin        String?
   specs       Json     @default("{}")

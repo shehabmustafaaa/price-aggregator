@@ -75,6 +75,12 @@ export default async function CatalogAdminPage({
                 >
                   view
                 </a>
+                <a
+                  href={`/${locale}/admin/catalog/${p.id}`}
+                  className="text-amber-400 underline"
+                >
+                  full edit
+                </a>
               </div>
 
               <form

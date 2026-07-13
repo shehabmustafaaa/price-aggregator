@@ -34,6 +34,65 @@ export async function updateProduct(
   });
 }
 
+export interface FullProductInput {
+  nameEn: string;
+  nameAr: string;
+  slug: string;
+  brandName?: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
+  specsJson?: string; // raw JSON text from the admin textarea
+  imagesText?: string; // one URL per line
+}
+
+/** Full product edit used by /admin/catalog/[id]. */
+export async function updateProductFull(id: number, input: FullProductInput) {
+  let brandId: number | null | undefined;
+  const brandName = input.brandName?.trim();
+  if (brandName) {
+    const slug = brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const brand = await prisma.brand.upsert({
+      where: { slug },
+      update: {},
+      create: { slug, name: brandName },
+    });
+    brandId = brand.id;
+  } else {
+    brandId = null;
+  }
+
+  let specs: unknown = undefined;
+  if (input.specsJson != null && input.specsJson.trim()) {
+    try {
+      specs = JSON.parse(input.specsJson);
+    } catch {
+      throw new Error("specs is not valid JSON");
+    }
+  }
+
+  const images =
+    input.imagesText != null
+      ? input.imagesText
+          .split(/\r?\n/)
+          .map((s) => s.trim())
+          .filter((s) => /^https?:\/\//.test(s))
+      : undefined;
+
+  await prisma.product.update({
+    where: { id },
+    data: {
+      nameEn: input.nameEn.trim(),
+      nameAr: input.nameAr.trim(),
+      slug: input.slug.trim(),
+      brandId,
+      descriptionEn: input.descriptionEn?.trim() || null,
+      descriptionAr: input.descriptionAr?.trim() || null,
+      ...(specs !== undefined ? { specs: JSON.parse(JSON.stringify(specs)) } : {}),
+      ...(images !== undefined ? { images } : {}),
+    },
+  });
+}
+
 /** Full cascade delete — for accessories that don't belong in the catalog. */
 export async function deleteProduct(id: number) {
   await prisma.$transaction(async (tx) => {
