@@ -1,0 +1,4 @@
+# Optional — only needed for the B.TECH adapter (headless browser).
+# Install with:  .venv/bin/pip install -r requirements-browser.txt
+#           then .venv/bin/playwright install chromium
+playwright==1.*

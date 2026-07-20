@@ -1,3 +1,4 @@
 httpx==0.28.*
 python-dotenv==1.*
 parsel==1.*
+# B.TECH (Playwright) is optional — see requirements-browser.txt
