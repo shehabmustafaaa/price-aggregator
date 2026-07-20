@@ -7,3 +7,7 @@ scraper/**/__pycache__/
 .env
 scraper/.env
 web/.env
+
+# Build artifacts / DB dumps (never commit)
+*.zip
+*.dump
