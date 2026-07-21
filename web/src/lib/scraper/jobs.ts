@@ -45,22 +45,24 @@ export async function claimNextJob(): Promise<ClaimedJob | null> {
     };
   }
 
-  // 2) Scheduled runs: any enabled store whose last run is older than its interval.
+  // 2) Scheduled runs: any enabled store whose LAST ATTEMPT (job of any
+  //    status) is older than its interval. Keying on the last attempt — not
+  //    the last successful run — means a store that keeps failing (e.g. no
+  //    Playwright, or an IP block) backs off for a full interval instead of
+  //    being re-claimed on every poll (which floods the jobs table).
   const stores = await prisma.store.findMany({
     where: { active: true, scrapeEnabled: true },
   });
   for (const store of stores) {
-    const lastRun = await prisma.scrapeRun.findFirst({
-      where: { storeId: store.id },
-      orderBy: { startedAt: "desc" },
-    });
     const lastJob = await prisma.scrapeJob.findFirst({
-      where: { storeId: store.id, status: "RUNNING" },
+      where: { storeId: store.id },
+      orderBy: { requestedAt: "desc" },
     });
-    if (lastJob) continue; // already being scraped
+    if (lastJob?.status === "RUNNING") continue; // already being scraped
+    const lastAttempt = lastJob?.startedAt ?? lastJob?.requestedAt ?? null;
     const due =
-      !lastRun ||
-      Date.now() - lastRun.startedAt.getTime() >
+      !lastAttempt ||
+      Date.now() - lastAttempt.getTime() >
         store.scrapeIntervalMinutes * 60 * 1000;
     if (!due) continue;
     const job = await prisma.scrapeJob.create({
