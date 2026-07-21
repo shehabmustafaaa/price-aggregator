@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { IngestOutcome } from "@/generated/prisma/client";
 import type { IngestPayload } from "./schema";
 import { matchOffer } from "./match";
 import { isPriceSane } from "./sanity";
@@ -47,6 +48,15 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
   let autoCreated = 0;
   let skippedAccessories = 0;
   const events: PriceChangeEvent[] = [];
+  // Per-URL audit rows for this run (see IngestEvent).
+  const audit: {
+    url: string;
+    title: string;
+    price: number | null;
+    outcome: IngestOutcome;
+    reason: string | null;
+    productId: number | null;
+  }[] = [];
   const autoApprove = await getBoolSetting(AUTO_APPROVE_KEY, true);
   const isPhones = category.slug === "mobile-phones";
 
@@ -56,6 +66,14 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
       // catalog — stores mix them into their mobiles category pages.
       if (isPhones && isAccessory(raw.title)) {
         skippedAccessories++;
+        audit.push({
+          url: raw.url,
+          title: raw.title,
+          price: raw.price,
+          outcome: IngestOutcome.SKIPPED_ACCESSORY,
+          reason: "title leads with an accessory word (not a phone)",
+          productId: null,
+        });
         continue;
       }
 
@@ -70,6 +88,16 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
 
       if (!isPriceSane(existing, raw.price)) {
         rejects++;
+        audit.push({
+          url: raw.url,
+          title: raw.title,
+          price: raw.price,
+          outcome: IngestOutcome.REJECTED_PRICE,
+          reason: existing
+            ? `price ${raw.price} is an implausible jump from last-seen ${Number(existing.price)}`
+            : "price failed sanity check",
+          productId: null,
+        });
         await prisma.matchReview.create({
           data: {
             storeId: store.id,
@@ -87,6 +115,7 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
       // Resolve the product this offer belongs to. Existing offers keep
       // their product; new ones match or auto-create.
       let productId: number | undefined;
+      let outcome: IngestOutcome = IngestOutcome.GRABBED;
       if (existing) {
         const v = await prisma.productVariant.findUnique({
           where: { id: existing.productVariantId },
@@ -103,8 +132,17 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
           // later in the same run for the same base name will match it.
           productId = await autoCreateProduct(raw, category.id);
           autoCreated++;
+          outcome = IngestOutcome.AUTO_CREATED;
         } else {
           sentToReview++;
+          audit.push({
+            url: raw.url,
+            title: raw.title,
+            price: raw.price,
+            outcome: IngestOutcome.REVIEW_QUEUED,
+            reason: `no confident product match (best score ${match.confidence.toFixed(2)})`,
+            productId: null,
+          });
           const alreadyQueued = await prisma.matchReview.findFirst({
             where: { storeId: store.id, rawUrl: raw.url, status: "pending" },
           });
@@ -209,10 +247,33 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
       if (oldPrice === null || oldPrice !== raw.price) {
         events.push({ offer, oldPrice, newPrice: raw.price });
       }
+      audit.push({
+        url: raw.url,
+        title: raw.title,
+        price: raw.price,
+        outcome,
+        reason:
+          outcome === IngestOutcome.AUTO_CREATED
+            ? "new product created"
+            : oldPrice === null
+              ? "first time seen"
+              : oldPrice !== raw.price
+                ? `price ${oldPrice} → ${raw.price}`
+                : "unchanged",
+        productId,
+      });
       upserted++;
     } catch (err) {
       console.error(`ingest error for ${raw.url}`, err);
       rejects++;
+      audit.push({
+        url: raw.url,
+        title: raw.title,
+        price: raw.price ?? null,
+        outcome: IngestOutcome.ERROR,
+        reason: (err instanceof Error ? err.message : String(err)).slice(0, 300),
+        productId: null,
+      });
     }
   }
 
@@ -237,6 +298,28 @@ export async function ingest(payload: IngestPayload): Promise<IngestResult> {
         ]
           .filter(Boolean)
           .join("; ") || null,
+    },
+  });
+
+  // Write the per-URL audit for this run, then prune old events so the table
+  // stays bounded (keep the last 2 days).
+  if (audit.length > 0) {
+    await prisma.ingestEvent.createMany({
+      data: audit.map((e) => ({
+        runId: run.id,
+        storeId: store.id,
+        url: e.url,
+        title: e.title.slice(0, 300),
+        price: e.price,
+        outcome: e.outcome,
+        reason: e.reason,
+        productId: e.productId,
+      })),
+    });
+  }
+  await prisma.ingestEvent.deleteMany({
+    where: {
+      run: { startedAt: { lt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) } },
     },
   });
 

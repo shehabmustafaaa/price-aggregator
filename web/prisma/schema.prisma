@@ -304,8 +304,39 @@ model ScrapeRun {
   rejects        Int          @default(0) // price-sanity rejections
   note           String?
 
+  events IngestEvent[]
+
   @@index([storeId, startedAt])
   @@map("scrape_runs")
+}
+
+// What the ingest pipeline decided for each scraped URL — the per-URL audit.
+// Pruned to recent runs (see pipeline) so it doesn't grow unbounded.
+enum IngestOutcome {
+  GRABBED           // attached to an existing product
+  AUTO_CREATED      // a new product was created for it
+  SKIPPED_ACCESSORY // not a phone (earbuds/charger/…)
+  REJECTED_PRICE    // failed the price-sanity check
+  REVIEW_QUEUED     // unmatched and auto-approve was off
+  ERROR             // threw during processing
+}
+
+model IngestEvent {
+  id        BigInt        @id @default(autoincrement())
+  runId     Int           @map("run_id")
+  run       ScrapeRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  storeId   Int           @map("store_id")
+  url       String
+  title     String
+  price     Decimal?      @db.Decimal(12, 2)
+  outcome   IngestOutcome
+  reason    String?
+  productId Int?          @map("product_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([runId])
+  @@index([outcome])
+  @@map("ingest_events")
 }
 
 // Low-confidence product matches wait here for human review.
