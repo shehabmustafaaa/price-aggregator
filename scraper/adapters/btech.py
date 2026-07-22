@@ -55,7 +55,12 @@ class BTechAdapter:
 
         results = []
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # --no-sandbox is required when the daemon runs as root (systemd);
+            # --disable-dev-shm-usage avoids crashes on servers with a small /dev/shm.
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
             page = browser.new_page(
                 locale="ar-EG",
                 viewport={"width": 1366, "height": 900},
