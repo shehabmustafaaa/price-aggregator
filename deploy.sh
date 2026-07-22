@@ -1,33 +1,42 @@
 #!/usr/bin/env bash
-# One-command deploy for the Linux host (aaPanel).
-# Usage (from the project root, e.g. /www/wwwroot/shehabw1):
-#   bash deploy.sh
+# One-command production update for the aaPanel host.
 #
-# Pulls the latest code from GitHub, installs deps, applies DB migrations,
-# rebuilds the web app, and restarts it. The two .env files are gitignored,
-# so your host config (DB, domain, secrets) is never touched.
+# Process model in production:
+#   - web app  -> aaPanel Node Project (restart from the aaPanel UI)
+#   - scraper  -> systemd service `asaar-scraper` (restarted here automatically)
+#   - aaPanel  -> Nginx reverse-proxy + SSL
+#
+# Run as root from the project root:  bash deploy.sh
+# The gitignored .env files (DB, domain, secrets) are never touched.
 set -euo pipefail
-
-# Run from the directory this script lives in (the project root).
 cd "$(dirname "$0")"
 
 echo "==> Pulling latest code from GitHub"
 git fetch origin
 git reset --hard origin/master
 
-echo "==> Building web app"
+echo "==> Rebuilding the web app"
 cd web
 npm install
 npx prisma generate
 npx prisma migrate deploy
 npm run build
+cd ..
 
-echo "==> Restarting app"
-# Restart however the app is managed. Adjust the name if yours differs.
-if command -v pm2 >/dev/null 2>&1; then
-  pm2 restart all
+echo "==> Fixing ownership so the web (www) user can read the new build"
+chown -R www:www .
+
+echo "==> Restarting the scraper daemon"
+if systemctl list-unit-files 2>/dev/null | grep -q '^asaar-scraper\.service'; then
+  systemctl restart asaar-scraper
+  echo "    asaar-scraper restarted"
 else
-  echo "pm2 not found — restart the web app manually."
+  echo "    (asaar-scraper.service not found — skipped)"
 fi
 
-echo "==> Done. Site updated."
+echo
+echo "=================================================================="
+echo "  Build complete. ONE manual step remains:"
+echo "    aaPanel  ->  Node Project  ->  shehabw1  ->  Restart"
+echo "  The new web build only goes live after that restart."
+echo "=================================================================="
