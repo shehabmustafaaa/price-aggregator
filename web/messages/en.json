@@ -90,5 +90,23 @@
       "not_signed_in": "Please sign in again.",
       "no_password": "This account has no password set."
     }
+  },
+  "footer": {
+    "about": "About",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact"
+  },
+  "contact": {
+    "name": "Name (optional)",
+    "email": "Email",
+    "message": "Message",
+    "send": "Send",
+    "sending": "Sending…",
+    "success": "Thanks! Your message has been sent.",
+    "invalid": "Please enter a valid email and a message.",
+    "rate_limited": "Too many messages — please try again later.",
+    "send_failed": "Sending failed — please email us directly at {email}.",
+    "fallback": "Or email us directly: "
   }
 }

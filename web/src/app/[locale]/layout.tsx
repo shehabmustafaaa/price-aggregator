@@ -45,6 +45,7 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: "common" });
+  const tf = await getTranslations({ locale, namespace: "footer" });
   const dir = locale === "ar" ? "rtl" : "ltr";
   const otherLocale = locale === "ar" ? "en" : "ar";
   const admin = await getAdminUser();
@@ -94,6 +95,20 @@ export default async function LocaleLayout({
             {children}
           </main>
           <footer className="border-t border-gray-800 py-6 text-center text-sm text-gray-500">
+            <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2">
+              <Link href="/about" className="hover:text-gray-300">
+                {tf("about")}
+              </Link>
+              <Link href="/privacy" className="hover:text-gray-300">
+                {tf("privacy")}
+              </Link>
+              <Link href="/terms" className="hover:text-gray-300">
+                {tf("terms")}
+              </Link>
+              <Link href="/contact" className="hover:text-gray-300">
+                {tf("contact")}
+              </Link>
+            </nav>
             © {new Date().getFullYear()} {t("siteName")}
           </footer>
         </NextIntlClientProvider>

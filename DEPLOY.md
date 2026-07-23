@@ -51,6 +51,8 @@ cp ~/asaar-env/web.env     web/.env
 cp ~/asaar-env/scraper.env scraper/.env
 # Confirm the domain is set (baked in at build time):
 grep NEXT_PUBLIC_SITE_URL web/.env    # NEXT_PUBLIC_SITE_URL=https://shehabw1.space
+# Contact page: CONTACT_EMAIL in web/.env receives contact-form mail and is shown
+# as the mailto fallback (falls back to SMTP_FROM if unset).
 ```
 
 ## 5. Database — choose ONE

@@ -1,6 +1,6 @@
 # Status & Backlog
 
-_Last updated: 2026-07-22_
+_Last updated: 2026-07-23_
 
 ## Current status
 
@@ -13,8 +13,9 @@ _Last updated: 2026-07-22_
 
 ## Backlog (rough value-for-effort order)
 
-1. **Legal/static pages** — Privacy, Terms, Contact + footer links (About exists).
-   Required for AdSense. _Small — agreed next candidate for /speckit-specify._
+1. ~~**Legal/static pages**~~ — **DONE 2026-07-23** (spec 007): Privacy, Terms, Contact
+   (form + mailto fallback, `CONTACT_EMAIL` env) + footer links on every page. AdSense
+   content prerequisite met; AdSense itself (account, ad units, ads.txt) remains future work.
 2. **Missed-search admin view** — `MissedSearch` logging exists; needs a UI listing
    no-result queries to drive which products/stores to add. _Small._
 3. **Duplicate-product detection & merge suggestions** — auto-created products from
