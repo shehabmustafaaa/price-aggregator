@@ -24,7 +24,9 @@ _Last updated: 2026-07-23_
    the ingest matcher's similarity primitives, now shared in `lib/ingest/similarity.ts`),
    one-click merge into the existing merge tool + persistent "not a duplicate" dismiss
    (`duplicate_dismissals`). Also chips away at item #8 (auto-created name dupes).
-4. **Recently-viewed products** — localStorage, no accounts needed. _Small._
+4. ~~**Recently-viewed products**~~ — **DONE 2026-08-02** (spec 010): device-only
+   localStorage strip (no account/server), shown on product + home pages; records on view,
+   dedupes to front, capped at 12, bilingual/RTL, no price (links to the live product page).
 5. **Automated tests for ingest/matching** — matcher is the riskiest, most-tweaked
    code and has zero tests. _Medium._
 6. **Spec side-by-side comparison** (2–4 products) — deferred by owner. _Large._

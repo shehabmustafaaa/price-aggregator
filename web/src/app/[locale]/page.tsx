@@ -5,6 +5,7 @@ import { getBestDeals } from "@/lib/catalog/deals";
 import ProductCard from "@/components/ProductCard";
 import DealRow from "@/components/DealRow";
 import Pagination from "@/components/Pagination";
+import RecentlyViewed from "@/components/RecentlyViewed";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,8 @@ export default async function HomePage({
           hrefFor={(n) => (n > 1 ? `/?page=${n}` : "/")}
         />
       </section>
+
+      <RecentlyViewed />
     </div>
   );
 }

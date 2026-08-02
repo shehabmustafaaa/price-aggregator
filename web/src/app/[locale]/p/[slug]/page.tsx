@@ -8,6 +8,7 @@ import ReportPriceButton from "@/components/ReportPriceButton";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 import ImageGallery from "@/components/ImageGallery";
 import ProductCard from "@/components/ProductCard";
+import RecentlyViewed from "@/components/RecentlyViewed";
 import { colorLabel } from "@/lib/catalog/colors";
 import { Link } from "@/i18n/navigation";
 import { getSessionUserId } from "@/lib/auth/session";
@@ -342,6 +343,15 @@ export default async function ProductPage({
           </div>
         </section>
       )}
+
+      <RecentlyViewed
+        current={{
+          slug: product.slug,
+          nameEn: product.nameEn,
+          nameAr: product.nameAr,
+          image: product.images[0] ?? null,
+        }}
+      />
     </div>
   );
 }

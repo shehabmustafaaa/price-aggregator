@@ -108,5 +108,8 @@
     "rate_limited": "Too many messages — please try again later.",
     "send_failed": "Sending failed — please email us directly at {email}.",
     "fallback": "Or email us directly: "
+  },
+  "recentlyViewed": {
+    "heading": "Recently viewed"
   }
 }
