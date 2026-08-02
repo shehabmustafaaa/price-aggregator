@@ -13,14 +13,15 @@ export default async function ScraperAdminPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ saved?: string; queued?: string }>;
+  searchParams: Promise<{ saved?: string; queued?: string; runsPage?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   if (!(await getAdminUser())) return <AdminGate />;
-  const { saved, queued } = await searchParams;
+  const { saved, queued, runsPage: runsPageParam } = await searchParams;
 
-  const { stores, jobs, runs } = await getScraperOverview();
+  const { stores, jobs, runs, runsPage, runsTotal, runsTotalPages } =
+    await getScraperOverview(Number(runsPageParam) || 1);
   const autoApprove = await getBoolSetting(AUTO_APPROVE_KEY, true);
   const storeIds = stores.map((s) => s.id).join(",");
 
@@ -151,11 +152,13 @@ export default async function ScraperAdminPage({
         />
       </section>
 
-      <section>
-        <h2 className="text-lg font-semibold mb-3">Scrape runs (last 20)</h2>
+      <section id="runs">
+        <h2 className="text-lg font-semibold mb-3">
+          Scrape runs ({runsTotal} total)
+        </h2>
         <p className="text-xs text-gray-500 mb-2">
-          The result — what the ingest did with the scraped data. Click a run
-          number for the per-URL breakdown.
+          The result — what the ingest did with the scraped data. Full history
+          is kept; click a run number for the per-URL breakdown.
         </p>
         <div className="overflow-x-auto rounded-xl border border-gray-800">
           <table className="w-full text-sm">
@@ -196,6 +199,31 @@ export default async function ScraperAdminPage({
             </tbody>
           </table>
         </div>
+        {runsTotalPages > 1 && (
+          <div className="mt-3 flex items-center justify-between text-sm text-gray-400">
+            <span>
+              Page {runsPage} of {runsTotalPages}
+            </span>
+            <div className="flex gap-2">
+              {runsPage > 1 && (
+                <a
+                  href={`/${locale}/admin/scraper?runsPage=${runsPage - 1}#runs`}
+                  className="rounded-lg border border-gray-700 px-3 py-1 hover:border-blue-500"
+                >
+                  ← Newer
+                </a>
+              )}
+              {runsPage < runsTotalPages && (
+                <a
+                  href={`/${locale}/admin/scraper?runsPage=${runsPage + 1}#runs`}
+                  className="rounded-lg border border-gray-700 px-3 py-1 hover:border-blue-500"
+                >
+                  Older →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

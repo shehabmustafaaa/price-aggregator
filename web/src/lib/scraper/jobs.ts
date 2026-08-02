@@ -119,8 +119,13 @@ export async function updateStoreScrapeConfig(
   });
 }
 
-export async function getScraperOverview() {
-  const [stores, jobs, runs] = await Promise.all([
+/** Scrape runs are kept forever; the admin page pages through the full
+ *  history (newest first) rather than only showing the most recent few. */
+export const RUNS_PAGE_SIZE = 50;
+
+export async function getScraperOverview(runsPage = 1) {
+  const page = Math.max(1, runsPage);
+  const [stores, jobs, runs, runsTotal] = await Promise.all([
     prisma.store.findMany({ orderBy: { id: "asc" } }),
     prisma.scrapeJob.findMany({
       orderBy: { id: "desc" },
@@ -129,9 +134,19 @@ export async function getScraperOverview() {
     }),
     prisma.scrapeRun.findMany({
       orderBy: { id: "desc" },
-      take: 20,
+      skip: (page - 1) * RUNS_PAGE_SIZE,
+      take: RUNS_PAGE_SIZE,
       include: { store: { select: { name: true } } },
     }),
+    prisma.scrapeRun.count(),
   ]);
-  return { stores, jobs, runs };
+  const runsTotalPages = Math.max(1, Math.ceil(runsTotal / RUNS_PAGE_SIZE));
+  return {
+    stores,
+    jobs,
+    runs,
+    runsPage: Math.min(page, runsTotalPages),
+    runsTotal,
+    runsTotalPages,
+  };
 }
