@@ -42,7 +42,7 @@ the production build (FR-004) — Vitest + `*.test.ts` are dev-only and not impo
 route; every covered function needs a positive AND a negative assertion (FR-005); the `@/`
 path alias must resolve in the test runner.
 
-**Scale/Scope**: ~8 test files over the pure lib functions + `vitest.config.ts` + 2 npm
+**Scale/Scope**: ~8 test files over the pure lib functions + `vitest.config.mts` + 2 npm
 scripts + the `scoreProductPair` extraction + a CLAUDE.md command note.
 
 ## Constitution Check
@@ -79,7 +79,7 @@ specs/011-ingest-tests/
 ```text
 web/
 ├── package.json                         # EDIT: add vitest (devDep) + "test"/"test:watch" scripts
-├── vitest.config.ts                     # NEW: node env + "@/" alias -> ./src
+├── vitest.config.mts                    # NEW: node env + "@/" alias -> ./src (.mts = ESM loader, no config warning)
 └── src/
     ├── lib/ingest/
     │   ├── similarity.ts                # EDIT: add pure scoreProductPair (moved from duplicates.ts)

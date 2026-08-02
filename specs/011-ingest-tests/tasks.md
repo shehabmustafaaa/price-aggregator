@@ -85,3 +85,9 @@ After T002 + T003: launch T004, T005, T006, T007, T008, T009 together — six in
 MVP = Phases 1–3 (T001–T009): runner + a green, DB-free baseline over every pure guard is the
 regression safety net. US2 (T010–T011) enriches the same files with the named tricky cases.
 Dev-only; the production build is untouched.
+
+---
+
+## Phase 6: Convergence
+
+- [X] T015 Reconcile the Vitest config filename in `plan.md` (Project Structure / T002 say `vitest.config.ts`) with the actual `web/vitest.config.mts` — switched to `.mts` during implementation to silence Vite's ESM-in-CommonJS config warning (project is not `type: module`); functionally identical, per plan: Project Structure (contradicts, LOW — docs only, code is correct and the suite runs green)
