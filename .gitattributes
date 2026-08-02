@@ -1,2 +1,4 @@
 # Shell scripts must keep Unix (LF) line endings or bash fails on Linux.
 *.sh text eol=lf
+# systemd units must also be LF or systemd fails to parse them on Linux.
+*.service text eol=lf

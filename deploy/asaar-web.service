@@ -1,0 +1,24 @@
+[Unit]
+Description=Asaar web app (Next.js, next start on :3000)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/shehabw1/web
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# next start loads web/.env itself, so no EnvironmentFile is needed here.
+# A login shell (-l) is used so aaPanel/nvm Node lands on PATH. If `npm` is
+# still not found for the www user, replace the line below with an absolute
+# path, e.g.:
+#   ExecStart=/www/server/nodejs/vXX/bin/node /www/wwwroot/shehabw1/web/node_modules/.bin/next start
+# (find the node path with:  sudo -u www bash -lc 'which node'  or the aaPanel Node manager)
+ExecStart=/bin/bash -lc 'exec npm run start'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
