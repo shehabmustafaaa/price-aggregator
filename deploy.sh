@@ -34,7 +34,7 @@ chown -R www:www .
 # hashes) is what gets served. Skipping this leaves the old server process
 # serving stale chunk URLs that now 404 -> white page until a restart.
 echo "==> Restarting the web app"
-if systemctl list-unit-files 2>/dev/null | grep -q '^asaar-web\.service'; then
+if systemctl cat asaar-web.service &>/dev/null; then
   systemctl restart asaar-web
   echo "    asaar-web restarted"
   WEB_RESTARTED=1
@@ -44,7 +44,7 @@ else
 fi
 
 echo "==> Restarting the scraper daemon"
-if systemctl list-unit-files 2>/dev/null | grep -q '^asaar-scraper\.service'; then
+if systemctl cat asaar-scraper.service &>/dev/null; then
   systemctl restart asaar-scraper
   echo "    asaar-scraper restarted"
 else
