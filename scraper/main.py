@@ -9,7 +9,8 @@ Usage:
                                       # "Run now" + per-store schedules from
                                       # /admin/scraper) and run them
 
-On the server, run `python main.py daemon` under pm2/systemd.
+On the server, run `python main.py daemon` under systemd (unit `asaar-scraper`;
+NO pm2 — see DEPLOY.md). Exactly ONE daemon instance at a time.
 """
 
 import argparse
