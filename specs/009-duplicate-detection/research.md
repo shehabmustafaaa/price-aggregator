@@ -20,20 +20,27 @@ table; per-category bounded matching); the rest settle scoring and reuse.
 
 ## Decision: Score products pairwise, symmetric, brand-gated
 
-- **Decision**: `scoreProductPair(a, b)` returns 0 if the two products' brands disagree
-  (`sameBrand`, treating null brand as its own group), else tokenizes each product's combined
-  name text (`brand + nameEn` and `nameAr`) and computes a symmetric similarity: require the
-  digit-token guard (`hasAllModelTokens`) **both directions** and qualifier agreement
-  (`qualifiersMatch`), then take the token-overlap score (min of the two directional
-  `overlapScore`s, or Jaccard — chosen in implementation) across the best of EN/AR.
+- **Decision**: `scoreProductPair(a, b)` is brand-gated (0 when brands disagree — enforced by
+  the caller's grouping, null brand its own group), then mirrors the ingest matcher
+  **asymmetrically, in both orientations, taking the max**: for each ordering it treats one
+  product's tokens as the canonical "name" and the other's as the noisier "listing", requires
+  the name's digit-bearing tokens to appear in the listing (`hasAllModelTokens`) and qualifier
+  agreement (`qualifiersMatch`), and scores the fraction of name tokens found (`overlapScore`).
+  The pair's score is `max(dir(a,b), dir(b,a))` across the best of EN/AR — so the function is
+  still symmetric as a whole (`score(a,b) == score(b,a)`).
 - **Rationale**: The ingest matcher is offer→product (asymmetric: "are all the product's model
-  tokens in the listing?"). Product→product must be symmetric (either could be the survivor),
-  so the digit/qualifier guards apply both ways; this preserves the matcher's core protection
-  against "iPhone 16" ≈ "iPhone 16 Pro" and "A56" ≈ "A17".
-- **Alternatives considered**: raw Jaccard with no digit/qualifier guard — rejected: it's
-  exactly what produces the 4G/5G and storage-tier false positives the spec wants minimized;
-  the guards keep those out unless names are otherwise near-identical (and if they slip
-  through, US3 dismiss handles them).
+  tokens in the listing?"). A **symmetric-`min()` / both-directions-must-hold** variant was the
+  initial design but was **rejected during implementation**: it scores a genuine duplicate at 0
+  whenever one side carries extra tokens the other lacks (e.g. "Galaxy A56 5G 256GB" vs "Galaxy
+  A56" → `min` direction fails on `5g`/`256gb`), a false negative confirmed by a runtime check.
+  Trying each side as the clean "name" and taking the max keeps the matcher's protection against
+  "iPhone 16" ≈ "iPhone 16 Pro" and "A56" ≈ "A17" (the guards still fail those in both
+  orientations) while tolerating listing noise — exactly the offer→product behavior, symmetrized.
+- **Alternatives considered**: (a) symmetric `min()` with both-direction guards — rejected as
+  above (false-negatives noisy-vs-clean dupes). (b) raw Jaccard with no digit/qualifier guard —
+  rejected: it produces the 4G/5G and storage-tier false positives (in practice those score 0
+  here because their differing digit tokens fail the guard; if any slipped through, US3 dismiss
+  is the backstop).
 
 ## Decision: Bound compute by (category, brand) grouping + caps
 

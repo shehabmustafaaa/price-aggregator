@@ -41,9 +41,12 @@ writes only the new `duplicate_dismissals`; merges go through the existing trans
 brand-group where k is small, not O(n²) over the whole catalog.
 
 **Constraints**: Comparison is per-category AND brand-agreeing (FR-002/SC-005 — never
-cross-category); score threshold near the matcher's existing `CONFIDENCE_THRESHOLD` (0.6);
-dismissals keyed on the unordered pair `(min(id),max(id))` (FR-006); page/action thin, logic
-in `lib/` (constitution I); English-only (FR-009); read-only except merge + dismiss (FR-010).
+cross-category); pair scoring mirrors the ingest matcher asymmetrically in both orientations
+and takes the max (see research.md — the digit-token + qualifier guards keep "A56"≠"A17" and
+"16"≠"16 Pro" apart while tolerating listing noise like "5G"/storage); score threshold near
+the matcher's existing `CONFIDENCE_THRESHOLD` (0.6); dismissals keyed on the unordered pair
+`(min(id),max(id))` (FR-006); page/action thin, logic in `lib/` (constitution I); English-only
+(FR-009); read-only except merge + dismiss (FR-010).
 
 **Scale/Scope**: 1 migration + 1 shared-helper extraction + `lib/admin/duplicates.ts` + one
 page + one actions file. Reuses merge and gate.

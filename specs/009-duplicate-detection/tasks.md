@@ -91,3 +91,10 @@ MVP = Phases 1–3 (T001–T005): the ranked read-only candidate list already te
 where the dupes are. Merge (US2) and dismiss (US3) are the follow-on increments that make it
 actionable and self-cleaning. Ships with a Prisma migration, so deploy runs
 `prisma migrate deploy` (via `bash deploy.sh`).
+
+---
+
+## Phase 7: Convergence
+
+- [X] T014 Reconcile the scoring description in `plan.md` (Constraints: "digit-token guard both directions") and `research.md` ("Decision: Score products pairwise…" — both-direction guard + `min()`) with the implemented `scoreProductPair` in `web/src/lib/admin/duplicates.ts`, which mirrors the ingest matcher asymmetrically (each product tried as clean "name" vs. the other as "listing", take the max) because the documented `min()` approach scored real dupes with "5G"/storage noise at 0.00, per plan: scoring decision (contradicts, LOW — docs only, code is correct and runtime-verified)
+
