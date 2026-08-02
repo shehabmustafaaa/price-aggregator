@@ -21,6 +21,8 @@ npx tsx prisma/seed.ts        # seed categories/brands/stores
 npm run dev                   # http://localhost:3000 (/ar default, /en)
 npm run build                 # rm -rf .next first if a dev server was running (routes.d.ts corruption)
 npm run lint
+npm test                      # Vitest unit tests (pure ingest/matching logic; no DB) — run before matcher tweaks
+npm run test:watch            # Vitest watch mode
 
 # one-off maintenance scripts (web/scripts/): run with npx tsx, e.g.
 npx tsx scripts/make-admin.ts <email> [password]
@@ -35,7 +37,11 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
 .venv/Scripts/python main.py daemon --poll 30   # poll /api/scraper/claim — ONE instance only
 ```
 
-There are no automated tests yet. Verify ingest/matching changes by running an adapter and
+Unit tests (Vitest, `web/`) cover the pure ingest/matching logic — price sanity, accessory
+filter, colour canonicalization, Arabic text normalization, similarity primitives + duplicate
+scoring, variant config — run with `npm test` (no DB needed); run these before/after matcher
+tweaks. DB-touching orchestration (`matchOffer` catalog query, `resolveVariant`, full
+`pipeline.ts`) has no automated tests yet — verify those end-to-end by running an adapter and
 checking the per-URL audit at `/admin/scraper` → run detail.
 
 ## Version gotchas (do not skip)

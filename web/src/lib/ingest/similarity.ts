@@ -69,3 +69,36 @@ export function qualifiersMatch(
 export function sameBrand(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
+
+/** Minimal product shape needed to score a pair for duplicate detection. */
+export interface ScorableProduct {
+  nameEn: string;
+  nameAr: string;
+  brandName: string | null;
+}
+
+/** Brand-gated name similarity between two products, mirroring the ingest
+ *  matcher (offer→product) but symmetrized: it tries each product as the
+ *  canonical "name" and the other as the noisier "listing" and takes the max,
+ *  so extra tokens on one side (e.g. "5G", storage) don't sink a real
+ *  duplicate, while the digit-token + qualifier guards still keep "A56" ≠
+ *  "A17" and "16" ≠ "16 Pro" apart. Best of EN/AR. Brand agreement is enforced
+ *  by the caller's grouping, so it isn't re-checked here. Pure — no DB. */
+export function scoreProductPair(a: ScorableProduct, b: ScorableProduct): number {
+  const aEn = tokenize(`${a.brandName ?? ""} ${a.nameEn}`);
+  const bEn = tokenize(`${b.brandName ?? ""} ${b.nameEn}`);
+  const aAr = tokenize(a.nameAr);
+  const bAr = tokenize(b.nameAr);
+
+  // dir(listing, name): every digit-bearing token of `name` must appear in
+  // `listing` and qualifiers must agree; score = fraction of `name` in `listing`.
+  const dir = (listing: Set<string>, name: Set<string>): number =>
+    hasAllModelTokens(listing, name) && qualifiersMatch(listing, name)
+      ? overlapScore(listing, name)
+      : 0;
+
+  const best = (x: Set<string>, y: Set<string>) =>
+    Math.max(dir(x, y), dir(y, x));
+
+  return Math.max(best(aEn, bEn), best(aAr, bAr));
+}

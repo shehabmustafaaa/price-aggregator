@@ -1,10 +1,8 @@
 import { prisma } from "@/lib/db";
-import {
-  tokenize,
-  overlapScore,
-  hasAllModelTokens,
-  qualifiersMatch,
-} from "@/lib/ingest/similarity";
+import { scoreProductPair } from "@/lib/ingest/similarity";
+
+// Re-export so existing callers/tests can import it from here too.
+export { scoreProductPair };
 
 /** A product as compared/displayed on the duplicates page. */
 export interface DupProduct {
@@ -28,32 +26,6 @@ export interface DuplicateCandidate {
 const SCORE_THRESHOLD = 0.6;
 /** Defensive cap: skip absurdly large brand groups (keeps O(k²) bounded). */
 const MAX_GROUP = 300;
-
-/** Brand-gated similarity between two products, using the shared matcher
- *  primitives. Mirrors the ingest matcher (offer→product) but symmetrized:
- *  it tries each product as the canonical "name" and the other as the noisier
- *  "listing", so extra tokens on one side (e.g. "5G", storage) don't sink a
- *  real duplicate, while the digit-token + qualifier guards still keep
- *  "A56" ≠ "A17" and "16" ≠ "16 Pro" apart. Best of EN/AR, best direction.
- *  Brand agreement is enforced by the caller's grouping. */
-export function scoreProductPair(a: DupProduct, b: DupProduct): number {
-  const aEn = tokenize(`${a.brandName ?? ""} ${a.nameEn}`);
-  const bEn = tokenize(`${b.brandName ?? ""} ${b.nameEn}`);
-  const aAr = tokenize(a.nameAr);
-  const bAr = tokenize(b.nameAr);
-
-  // dir(listing, name): every digit-bearing token of `name` must appear in
-  // `listing` and qualifiers must agree; score = fraction of `name` in `listing`.
-  const dir = (listing: Set<string>, name: Set<string>): number =>
-    hasAllModelTokens(listing, name) && qualifiersMatch(listing, name)
-      ? overlapScore(listing, name)
-      : 0;
-
-  const best = (x: Set<string>, y: Set<string>) =>
-    Math.max(dir(x, y), dir(y, x));
-
-  return Math.max(best(aEn, bEn), best(aAr, bAr));
-}
 
 /** Compute ranked likely-duplicate pairs. Comparison is within
  *  (category, brand) groups only (SC-005 + brand agreement), dismissed pairs
