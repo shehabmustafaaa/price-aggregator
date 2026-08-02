@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getAdminUser } from "@/lib/auth/admin";
 import { listProductsForAdmin } from "@/lib/admin/catalog";
 import AdminGate from "@/components/AdminGate";
+import { Link } from "@/i18n/navigation";
 import {
   deleteProductAction,
   mergeProductAction,
@@ -29,7 +30,15 @@ export default async function CatalogAdminPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Catalog ({products.length} shown)</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-bold">Catalog ({products.length} shown)</h1>
+        <Link
+          href="/admin/catalog/duplicates"
+          className="text-sm text-blue-400 underline hover:text-blue-300"
+        >
+          Duplicate suggestions →
+        </Link>
+      </div>
 
       <form method="get" className="flex gap-2 text-sm">
         <input

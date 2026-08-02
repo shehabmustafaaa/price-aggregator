@@ -363,6 +363,20 @@ model AppSetting {
   @@map("app_settings")
 }
 
+// "Not a duplicate" decisions for the duplicate-detection admin tool.
+// Keyed on the UNORDERED product pair (loId < hiId) so A–B and B–A are one row.
+// Advisory only (no FK cascade): if a product is later deleted/merged, the row
+// simply stops matching a live pair.
+model DuplicateDismissal {
+  id          Int      @id @default(autoincrement())
+  productLoId Int      @map("product_lo_id")
+  productHiId Int      @map("product_hi_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([productLoId, productHiId])
+  @@map("duplicate_dismissals")
+}
+
 // No-results search capture — drives what to add next.
 model MissedSearch {
   id        Int      @id @default(autoincrement())

@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/db";
 import type { RawOffer } from "./schema";
+import {
+  tokenize,
+  overlapScore,
+  hasAllModelTokens,
+  qualifiersMatch,
+  sameBrand,
+} from "./similarity";
 
 export interface MatchResult {
   productId: number | null;
@@ -51,7 +58,7 @@ export async function matchOffer(
 
     // Phone names live in their digit tokens (A17 vs A56, 14 vs 13):
     // every digit-bearing token of the product name must appear in the
-    // listing, and qualifier words (Pro/Max/Ultra/برو/…) must agree.
+    // listing, and qualifier words (Pro/Max/Ultra/…) must agree.
     const nameOk = (nameTokens: Set<string>) =>
       hasAllModelTokens(rawTokens, nameTokens) &&
       qualifiersMatch(rawTokens, nameTokens);
@@ -68,69 +75,4 @@ export async function matchOffer(
     return { productId: best.productId, confidence: best.score };
   }
   return { productId: null, confidence: best?.score ?? 0 };
-}
-
-/** Normalize Arabic orthography so spelling variants compare equal:
- *  alef forms (أ إ آ ا), taa marbuta (ة/ه), alef maqsura (ى/ي),
- *  tatweel and diacritics. "ألترا" and "الترا" must match. */
-function normalizeArabic(text: string): string {
-  return text
-    .replace(/[ً-ٰٟ]/g, "") // diacritics
-    .replace(/ـ/g, "") // tatweel
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي")
-    .replace(/ؤ/g, "و")
-    .replace(/ئ/g, "ي");
-}
-
-function tokenize(text: string): Set<string> {
-  return new Set(
-    normalizeArabic(text)
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}+]+/gu, " ")
-      .split(/\s+/)
-      .filter((t) => t.length > 1),
-  );
-}
-
-/** Fraction of the product-name tokens found in the raw listing title. */
-function overlapScore(rawTokens: Set<string>, nameTokens: Set<string>): number {
-  if (nameTokens.size === 0) return 0;
-  let hits = 0;
-  for (const t of nameTokens) if (rawTokens.has(t)) hits++;
-  return hits / nameTokens.size;
-}
-
-/** Every token of the product name that contains a digit (a56, s25, 14…)
- *  must literally appear in the raw listing title. */
-function hasAllModelTokens(
-  rawTokens: Set<string>,
-  nameTokens: Set<string>,
-): boolean {
-  for (const t of nameTokens) {
-    if (/\d/.test(t) && !rawTokens.has(t)) return false;
-  }
-  return true;
-}
-
-const QUALIFIERS = new Set([
-  "pro", "max", "ultra", "plus", "mini", "lite", "fe", "note", "edge",
-  "برو", "ماكس", "الترا", "بلس", "ميني", "لايت", "نوت",
-]);
-
-/** "iPhone 16" must not swallow "iPhone 16 Pro": the qualifier sets of
- *  the listing and the product name must be identical. */
-function qualifiersMatch(
-  rawTokens: Set<string>,
-  nameTokens: Set<string>,
-): boolean {
-  for (const q of QUALIFIERS) {
-    if (rawTokens.has(q) !== nameTokens.has(q)) return false;
-  }
-  return true;
-}
-
-function sameBrand(a: string, b: string): boolean {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }

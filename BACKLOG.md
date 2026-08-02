@@ -19,8 +19,11 @@ _Last updated: 2026-07-23_
 2. ~~**Missed-search admin view**~~ — **DONE 2026-08-02** (spec 008): admin-only
    `/admin/missed-searches` — read-only ranked list of zero-result queries aggregated by
    normalized term (count, locale(s), last-searched) + dismiss. No catalog/scraper writes.
-3. **Duplicate-product detection & merge suggestions** — auto-created products from
-   scrapers produce near-dupes; admin merge tool exists, suggestions don't. _Medium._
+3. ~~**Duplicate-product detection & merge suggestions**~~ — **DONE 2026-08-02** (spec 009):
+   admin-only `/admin/catalog/duplicates` — ranked same-category likely-dupe pairs (reusing
+   the ingest matcher's similarity primitives, now shared in `lib/ingest/similarity.ts`),
+   one-click merge into the existing merge tool + persistent "not a duplicate" dismiss
+   (`duplicate_dismissals`). Also chips away at item #8 (auto-created name dupes).
 4. **Recently-viewed products** — localStorage, no accounts needed. _Small._
 5. **Automated tests for ingest/matching** — matcher is the riskiest, most-tweaked
    code and has zero tests. _Medium._
