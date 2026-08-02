@@ -17,7 +17,7 @@ gate. No new dependencies, no migration._
 
 ## Phase 2: Foundational
 
-- [ ] T001 Create `web/src/lib/admin/missedSearches.ts` with the `MissedSearchRow` type and `aggregateMissedSearches(limit = 100)`: fetch `missed_searches` rows, group in JS keyed on `normalizeText(query)` (from `web/src/lib/text.ts`), accumulate count + distinct locales + max `createdAt` + a representative raw term, sort by count desc then `lastSearchedAt` desc, slice to `limit` (per data-model.md / research.md)
+- [X] T001 Create `web/src/lib/admin/missedSearches.ts` with the `MissedSearchRow` type and `aggregateMissedSearches(limit = 100)`: fetch `missed_searches` rows, group in JS keyed on `normalizeText(query)` (from `web/src/lib/text.ts`), accumulate count + distinct locales + max `createdAt` + a representative raw term, sort by count desc then `lastSearchedAt` desc, slice to `limit` (per data-model.md / research.md)
 
 **Checkpoint**: Aggregation available for the page.
 
@@ -30,7 +30,7 @@ last-searched time.
 
 **Independent Test**: quickstart.md Scenarios 1–3, 5.
 
-- [ ] T002 [US1] Create `web/src/app/[locale]/admin/missed-searches/page.tsx`: server component, `export const dynamic = "force-dynamic"`, `if (!(await getAdminUser())) return <AdminGate />` (FR-001/FR-008, English-only), render a table (Term / Count / Locale(s) / Last searched) from `aggregateMissedSearches()` ordered by count desc, with a clear empty state when zero rows (FR-002/FR-003/FR-006) — mirrors `web/src/app/[locale]/admin/review/page.tsx` (depends on T001)
+- [X] T002 [US1] Create `web/src/app/[locale]/admin/missed-searches/page.tsx`: server component, `export const dynamic = "force-dynamic"`, `if (!(await getAdminUser())) return <AdminGate />` (FR-001/FR-008, English-only), render a table (Term / Count / Locale(s) / Last searched) from `aggregateMissedSearches()` ordered by count desc, with a clear empty state when zero rows (FR-002/FR-003/FR-006) — mirrors `web/src/app/[locale]/admin/review/page.tsx` (depends on T001)
 
 **Checkpoint**: Read-only ranked list works and is gated — usable MVP.
 
@@ -42,9 +42,9 @@ last-searched time.
 
 **Independent Test**: quickstart.md Scenario 4.
 
-- [ ] T003 [US2] Add `dismissMissedSearch(normalizedTerm)` to `web/src/lib/admin/missedSearches.ts`: fetch candidate rows, delete every `missed_searches` row whose `normalizeText(query)` equals `normalizedTerm` (all locales/casings); zero matches is a no-op, never throws (FR-005/FR-007, edge case 4)
-- [ ] T004 [US2] Create `web/src/app/[locale]/admin/missed-searches/actions.ts`: `"use server"` `dismissAction(formData)` — `await getAdminUser()` guard, read hidden `normalized` field, call `dismissMissedSearch`, then `revalidatePath` (depends on T003)
-- [ ] T005 [US2] Add a per-row dismiss `<form action={dismissAction}>` with a hidden `normalized` input to `web/src/app/[locale]/admin/missed-searches/page.tsx` (depends on T002, T004)
+- [X] T003 [US2] Add `dismissMissedSearch(normalizedTerm)` to `web/src/lib/admin/missedSearches.ts`: fetch candidate rows, delete every `missed_searches` row whose `normalizeText(query)` equals `normalizedTerm` (all locales/casings); zero matches is a no-op, never throws (FR-005/FR-007, edge case 4)
+- [X] T004 [US2] Create `web/src/app/[locale]/admin/missed-searches/actions.ts`: `"use server"` `dismissAction(formData)` — `await getAdminUser()` guard, read hidden `normalized` field, call `dismissMissedSearch`, then `revalidatePath` (depends on T003)
+- [X] T005 [US2] Add a per-row dismiss `<form action={dismissAction}>` with a hidden `normalized` input to `web/src/app/[locale]/admin/missed-searches/page.tsx` (depends on T002, T004)
 
 **Checkpoint**: Both stories complete and independently testable.
 
@@ -53,7 +53,7 @@ last-searched time.
 ## Phase 5: Polish & Cross-Cutting Concerns
 
 - [ ] T006 Run quickstart.md Scenarios 1–6 (aggregation, normalization collapse, gating, dismiss incl. cross-locale, empty state, read-only) in the local admin; fix anything found
-- [ ] T007 Update `BACKLOG.md`: mark the missed-search admin view done
+- [X] T007 Update `BACKLOG.md`: mark the missed-search admin view done
 
 ---
 

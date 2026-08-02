@@ -16,8 +16,9 @@ _Last updated: 2026-07-23_
 1. ~~**Legal/static pages**~~ — **DONE 2026-07-23** (spec 007): Privacy, Terms, Contact
    (form + mailto fallback, `CONTACT_EMAIL` env) + footer links on every page. AdSense
    content prerequisite met; AdSense itself (account, ad units, ads.txt) remains future work.
-2. **Missed-search admin view** — `MissedSearch` logging exists; needs a UI listing
-   no-result queries to drive which products/stores to add. _Small._
+2. ~~**Missed-search admin view**~~ — **DONE 2026-08-02** (spec 008): admin-only
+   `/admin/missed-searches` — read-only ranked list of zero-result queries aggregated by
+   normalized term (count, locale(s), last-searched) + dismiss. No catalog/scraper writes.
 3. **Duplicate-product detection & merge suggestions** — auto-created products from
    scrapers produce near-dupes; admin merge tool exists, suggestions don't. _Medium._
 4. **Recently-viewed products** — localStorage, no accounts needed. _Small._
