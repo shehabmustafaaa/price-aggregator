@@ -75,3 +75,10 @@ concerns in different files (T003 adds to the lib module, T002 reads from it).
 
 MVP = Phase 2 + Phase 3 (T001–T002): the ranked read-only list alone delivers the feature's
 core value. US2 (dismiss, T003–T005) is an independent follow-on increment.
+
+---
+
+## Phase 6: Convergence
+
+- [X] T008 Make `dismissMissedSearch` in `web/src/lib/admin/missedSearches.ts` delete ALL occurrences of a term regardless of table size, per FR-005 / SC-003 / US2/AC1 (partial) — the current `findMany({ take: SCAN_LIMIT })` with no `orderBy` can leave matching rows beyond the 5000-row window, so a dismissed term reappears on reload once `missed_searches` exceeds the cap; fix by looping `deleteMany` until zero rows match, or by fetching only `id,query` for all rows (two small columns) without the cap
+

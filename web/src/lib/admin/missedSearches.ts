@@ -67,17 +67,29 @@ export async function aggregateMissedSearches(
     .slice(0, limit);
 }
 
-/** Dismiss a term: delete every missed_searches row whose normalized query
+/** Dismiss a term: delete EVERY missed_searches row whose normalized query
  *  matches (all locales/casings), so the whole aggregated row disappears and
- *  stays gone (FR-005). No-op if nothing matches — never throws (edge case 4). */
+ *  stays gone regardless of table size (FR-005 / SC-003). Because the match is
+ *  on the JS-side normalizeText (not expressible in SQL), we page through all
+ *  rows in id-ordered batches and delete matches until none remain. No-op if
+ *  nothing matches — never throws (edge case 4). */
 export async function dismissMissedSearch(normalizedTerm: string): Promise<void> {
-  const rows = await prisma.missedSearch.findMany({
-    select: { id: true, query: true },
-    take: SCAN_LIMIT,
-  });
-  const ids = rows
-    .filter((r) => normalizeText(r.query) === normalizedTerm)
-    .map((r) => r.id);
-  if (ids.length === 0) return;
-  await prisma.missedSearch.deleteMany({ where: { id: { in: ids } } });
+  let cursor: number | undefined;
+  for (;;) {
+    const batch = await prisma.missedSearch.findMany({
+      select: { id: true, query: true },
+      orderBy: { id: "asc" },
+      take: SCAN_LIMIT,
+      ...(cursor !== undefined ? { skip: 1, cursor: { id: cursor } } : {}),
+    });
+    if (batch.length === 0) break;
+    const ids = batch
+      .filter((r) => normalizeText(r.query) === normalizedTerm)
+      .map((r) => r.id);
+    if (ids.length > 0) {
+      await prisma.missedSearch.deleteMany({ where: { id: { in: ids } } });
+    }
+    if (batch.length < SCAN_LIMIT) break;
+    cursor = batch[batch.length - 1].id;
+  }
 }
