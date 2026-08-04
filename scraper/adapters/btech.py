@@ -41,13 +41,19 @@ STORAGE_RE = re.compile(r"سعة\s*([\d]+)\s*(جيجا|تيرا)")
 RAM_RE = re.compile(r"رام\s*([\d]+)\s*جيجا")
 MAX_SCROLLS = 25
 SCROLL_PAUSE_S = 2.0
+# Overall cap on unique listings harvested per run, so a full brand-by-brand
+# sweep stays inside the scheduler's 30-min stale-job window and never floods.
+MAX_ITEMS = 400
+# Cap on how many brand segments we visit, as a second bound on run length.
+MAX_SEGMENTS = 25
 
 
 class BTechAdapter:
     store_slug = "btech"
 
     def __init__(self, request_delay_s: float | None = None):
-        # For a browser adapter the delay paces scroll batches.
+        # For a browser adapter the delay paces scroll batches and, now, the
+        # gap between brand-segment page loads.
         self.scroll_pause_s = request_delay_s or SCROLL_PAUSE_S
 
     def scrape(self) -> list[ScrapeResult]:
@@ -71,7 +77,96 @@ class BTechAdapter:
         return results
 
     def _scrape_category(self, page, path: str, category_slug: str) -> ScrapeResult:
-        page.goto(f"{BASE}/ar/c/{path}", wait_until="domcontentloaded", timeout=90000)
+        base_url = f"{BASE}/ar/c/{path}"
+
+        # The default mobiles grid caps near ~20 items with no pagination.
+        # Instead, load it once to discover the brand-facet links, then harvest
+        # each (smaller, fully-loadable) brand grid and union the results. If no
+        # brand links are found (e.g. B.TECH changed its facet markup), we fall
+        # back to harvesting the base grid exactly as before — coverage never
+        # regresses below today's behavior.
+        page.goto(base_url, wait_until="domcontentloaded", timeout=90000)
+        page.wait_for_selector('a[href*="/p/"]', timeout=60000)
+
+        brand_urls = self._discover_brand_urls(page, base_url)
+        segments = brand_urls[:MAX_SEGMENTS] if brand_urls else [base_url]
+
+        cards_by_href: dict[str, dict] = {}
+        parse_errors = 0
+        for i, segment_url in enumerate(segments):
+            if len(cards_by_href) >= MAX_ITEMS:
+                break
+            # Pace segment loads with the configured per-store delay. The first
+            # segment for the fallback case is already loaded above; brand
+            # segments each get their own goto in _harvest_grid.
+            if i > 0 or brand_urls:
+                time.sleep(self.scroll_pause_s)
+            try:
+                for card in self._harvest_grid(page, segment_url):
+                    href = card.get("href")
+                    if href and href not in cards_by_href:
+                        cards_by_href[href] = card
+                        if len(cards_by_href) >= MAX_ITEMS:
+                            break
+            except Exception:
+                # One bad brand/segment must never abort the whole run.
+                parse_errors += 1
+                continue
+
+        offers: list[RawOffer] = []
+        for card in cards_by_href.values():
+            try:
+                offer = self._parse_card(card)
+                if offer:
+                    offers.append(offer)
+            except Exception:
+                parse_errors += 1
+
+        return ScrapeResult(
+            store_slug=self.store_slug,
+            category_slug=category_slug,
+            offers=offers,
+            parse_errors=parse_errors,
+        )
+
+    def _discover_brand_urls(self, page, base_url: str) -> list[str]:
+        """Best-effort: read the category page's own brand-facet links so we do
+        not hard-code a URL scheme. Returns absolute, filtered category URLs
+        (those pointing back into the same category but carrying a facet query),
+        de-duplicated and excluding the base. Returns [] on any failure."""
+        try:
+            hrefs = page.evaluate(
+                """(basePath) => {
+                    const out = new Set();
+                    for (const a of document.querySelectorAll('a[href]')) {
+                        const href = a.getAttribute('href') || '';
+                        // Same category path, but a facet/filter variant (has a
+                        // query string) — brand facets look like this on B.TECH.
+                        if (href.includes(basePath) && href.includes('?')) {
+                            out.add(href);
+                        }
+                    }
+                    return Array.from(out);
+                }""",
+                f"/ar/c/{list(CATEGORY_MAP.keys())[0]}",
+            )
+        except Exception:
+            return []
+
+        seen: set[str] = set()
+        urls: list[str] = []
+        for href in hrefs or []:
+            url = href if href.startswith("http") else f"{BASE}{href}"
+            if url == base_url or url in seen:
+                continue
+            seen.add(url)
+            urls.append(url)
+        return urls
+
+    def _harvest_grid(self, page, url: str) -> list[dict]:
+        """Load a grid URL, infinite-scroll it, and return raw card dicts.
+        This is the original single-grid harvesting logic, unchanged."""
+        page.goto(url, wait_until="domcontentloaded", timeout=90000)
         page.wait_for_selector('a[href*="/p/"]', timeout=60000)
 
         # Infinite scroll until the card count stops growing. Scroll to the
@@ -91,7 +186,7 @@ class BTechAdapter:
                 if quiet >= 3:
                     break
 
-        cards = page.evaluate(
+        return page.evaluate(
             """() => {
                 const seen = new Set();
                 const out = [];
@@ -109,23 +204,6 @@ class BTechAdapter:
                 }
                 return out;
             }"""
-        )
-
-        offers: list[RawOffer] = []
-        parse_errors = 0
-        for card in cards:
-            try:
-                offer = self._parse_card(card)
-                if offer:
-                    offers.append(offer)
-            except Exception:
-                parse_errors += 1
-
-        return ScrapeResult(
-            store_slug=self.store_slug,
-            category_slug=category_slug,
-            offers=offers,
-            parse_errors=parse_errors,
         )
 
     def _parse_card(self, card: dict) -> RawOffer | None:
