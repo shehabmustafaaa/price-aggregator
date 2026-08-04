@@ -33,7 +33,11 @@ _Last updated: 2026-07-23_
    variant config (31 tests, no DB). Follow-on: DB-integration tests for `matchOffer`/
    `resolveVariant`/`pipeline`.
 6. **Spec side-by-side comparison** (2–4 products) — deferred by owner. _Large._
-7. **Deeper B.TECH scrape** — category grid caps at top-20; expand via brand filters. _Medium._
+7. ~~**Deeper B.TECH scrape**~~ — **DONE 2026-08-04** (spec 012): B.TECH hard-caps every grid
+   at ~20 (no pagination/API; brand facets are JS buttons), but applying a brand facet yields a
+   shareable `…&filters={"brands":["slug"]}` search URL. Adapter now harvests per brand slug and
+   unions by product path → **218 offers** live (vs 20). Per-brand still caps at 20, so very
+   large brands (Samsung/Xiaomi) are truncated — future refinement could add a second facet.
 8. **Editorial cleanup of auto-created product names** (nameEn=nameAr raw titles).
 9. **2B via residential proxy** or scheduled home-PC runs.
 10. **SEO polish** — deferred by owner ("seo will be later").

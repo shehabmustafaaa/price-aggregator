@@ -87,35 +87,50 @@ scraper/
 into a reusable helper, add a brand-discovery step, and orchestrate multiple segments in
 `scrape()`. No other files change.
 
-## Design Detail
+## Investigation findings (live, 2026-08-04)
 
-**Refactor**: Split `_scrape_category` into:
-1. `_harvest_grid(page, url) -> list[dict]` — goto + wait + infinite-scroll + evaluate the card
-   array (today's logic, unchanged), returning raw card dicts.
-2. `_discover_brand_urls(page) -> list[str]` — on the base category page, read anchors in the
-   brand facet (e.g. links whose href points back into the mobiles category with a brand
-   filter param/segment). Return absolute URLs. Best-effort; `[]` if none found.
+The original plan assumed brand grids are smaller and that facet *links* could be discovered.
+Direct probing of live B.TECH disproved both:
 
-**Orchestrate** in `scrape()`:
-- Load base category page once; `brand_urls = _discover_brand_urls(page)`.
-- Segments = `brand_urls` if non-empty, else `[base_category_url]` (fallback, FR-006).
-- For each segment: `_harvest_grid`, catch exceptions → `parse_errors += 1`, `continue`
-  (FR-004). Sleep the per-store delay between segments (FR-003).
-- Accumulate cards into a dict keyed by product URL to de-dup (FR-002); stop adding once the
-  ~400 cap is reached (FR-005).
-- Parse the unioned cards with the existing `_parse_card` (unchanged) into one `ScrapeResult`
-  for `mobile-phones`.
+- Every grid — main category, search, and per-brand — hard-caps at exactly **20** items.
+- `?page=2` / `?p=2` / `?offset=20` are ignored; there is no "load more" control and no
+  separate JSON product API (data is Next.js server-streamed).
+- Brand facets are **unlabeled `<button>`s** (client-side JS), so there are no brand *links*
+  to discover — `_discover_brand_urls` (the first attempt) found zero.
+- **Key unlock**: applying a brand facet rewrites the URL to a *shareable* search URL,
+  `…/ar/s?q=mobiles+tablets+mobiles&filters={"brands":["<slug>"]}` (slug = English lowercase).
+  Constructing that URL per brand and unioning yields ~200+ phones (verified: 218).
+
+## Design Detail (as implemented)
+
+**`_brand_url(slug)`** builds the brand-filtered search URL (URL-encoded `filters` JSON).
+
+**`_harvest_grid(page, url) -> list[dict]`** — goto + wait + scroll + evaluate the card array
+(the original single-grid logic, unchanged).
+
+**`_scrape_category`** iterates `BRAND_SLUGS` (apple, samsung, xiaomi, redmi, oppo, realme,
+honor, infinix, vivo, nokia, tecno, huawei, oneplus → canonical labels):
+- For each brand: `_harvest_grid(_brand_url(slug))`, wrapped in try/except → `parse_errors += 1`
+  + `continue` (FR-004). Sleep the per-store delay between brands (FR-003).
+- Union cards into a dict keyed by product **path** (`href.split("?")[0]`, dropping the
+  per-offer `offering_id`) to de-dup across brands (FR-002); stop at `MAX_ITEMS` = 400 (FR-005).
+- If the union is empty (e.g. B.TECH changed the filter scheme), fall back to the unfiltered
+  `SEARCH_BASE` grid — the original ~20 (FR-006).
+- Parse the union via the unchanged `_parse_card`.
 
 **Unchanged**: `_parse_card`, `_detect_brand`, regexes, Chromium launch args, `RawOffer`
-shape, `main.py` wiring, all ingest/matching/web code.
+shape, `main.py` wiring, all ingest/matching/web code (FR-007).
 
 ## Risks & Mitigations
 
-- *Brand facet selector guess is wrong* → discovery returns `[]` → automatic fallback to
-  today's behavior; no regression. Selector is verified during implement against the live DOM.
-- *Full sweep triggers an IP block* → item cap + existing delay bound the traffic; can lower
-  the cap or raise the delay per-store from `/admin/scraper` without code change.
-- *Run exceeds 30-min window* → item cap keeps it bounded; if still long, reduce cap.
+- *B.TECH changes the `filters` URL scheme* → per-brand grids return nothing → empty union →
+  automatic fallback to the unfiltered grid; no regression below today's ~20.
+- *A brand B.TECH doesn't stock* (e.g. OnePlus) → its grid is empty/degenerate → caught,
+  counted as a parse error, run continues (observed live: OnePlus returned 1 non-phone item).
+- *Full sweep triggers an IP block* → item cap + existing per-store delay bound the traffic;
+  lower the cap or raise the delay from `/admin/scraper` with no code change.
+- *Per-brand 20-cap still truncates very large brands* (Samsung/Xiaomi have >20 models) →
+  accepted for v1; a future refinement could add a second facet (e.g. price bands) per brand.
 
 ## Complexity Tracking
 

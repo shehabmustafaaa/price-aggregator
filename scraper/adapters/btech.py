@@ -9,15 +9,43 @@ Card text shape (Arabic):
     سامسونج جالكسي A17 ، سعة 256 جيجا بايت ، رام 8 جيجا بايت ، ... - اسود
 """
 
+import json
 import re
 import time
+import urllib.parse
 
 from core.models import RawOffer, ScrapeResult
 
 BASE = "https://btech.com"
 
+# B.TECH's mobiles category redirects to its search app; every grid (category,
+# search, per-brand) hard-caps at ~20 items with no pagination or "load more".
+# To get past 20 we harvest one brand at a time: the brand facet is reflected in
+# a shareable search URL (…?q=…&filters={"brands":["<slug>"]}), so we build those
+# URLs directly per brand and union the results. ~13 brands × up to 20 ≈ 200+
+# unique phones vs. the single 20-item grid.
+SEARCH_BASE = f"{BASE}/ar/s?q=mobiles+tablets+mobiles"
+
 CATEGORY_MAP = {
     "mobiles-tablets/mobiles": "mobile-phones",
+}
+
+# B.TECH brand-facet slugs (English, lowercase) used in the filters= param,
+# paired with the canonical brand label our ingest expects.
+BRAND_SLUGS = {
+    "apple": "Apple",
+    "samsung": "Samsung",
+    "xiaomi": "Xiaomi",
+    "redmi": "Xiaomi",
+    "oppo": "Oppo",
+    "realme": "Realme",
+    "honor": "Honor",
+    "infinix": "Infinix",
+    "vivo": "Vivo",
+    "nokia": "Nokia",
+    "tecno": "Tecno",
+    "huawei": "Huawei",
+    "oneplus": "OnePlus",
 }
 
 KNOWN_BRANDS = {
@@ -44,8 +72,12 @@ SCROLL_PAUSE_S = 2.0
 # Overall cap on unique listings harvested per run, so a full brand-by-brand
 # sweep stays inside the scheduler's 30-min stale-job window and never floods.
 MAX_ITEMS = 400
-# Cap on how many brand segments we visit, as a second bound on run length.
-MAX_SEGMENTS = 25
+
+
+def _brand_url(slug: str) -> str:
+    """Build the search URL filtered to a single brand facet."""
+    filters = json.dumps({"brands": [slug]}, separators=(",", ":"))
+    return f"{SEARCH_BASE}&filters={urllib.parse.quote(filters)}"
 
 
 class BTechAdapter:
@@ -77,44 +109,44 @@ class BTechAdapter:
         return results
 
     def _scrape_category(self, page, path: str, category_slug: str) -> ScrapeResult:
-        base_url = f"{BASE}/ar/c/{path}"
-
-        # The default mobiles grid caps near ~20 items with no pagination.
-        # Instead, load it once to discover the brand-facet links, then harvest
-        # each (smaller, fully-loadable) brand grid and union the results. If no
-        # brand links are found (e.g. B.TECH changed its facet markup), we fall
-        # back to harvesting the base grid exactly as before — coverage never
-        # regresses below today's behavior.
-        page.goto(base_url, wait_until="domcontentloaded", timeout=90000)
-        page.wait_for_selector('a[href*="/p/"]', timeout=60000)
-
-        brand_urls = self._discover_brand_urls(page, base_url)
-        segments = brand_urls[:MAX_SEGMENTS] if brand_urls else [base_url]
-
-        cards_by_href: dict[str, dict] = {}
+        # Harvest one brand facet at a time (each capped at ~20 by B.TECH) and
+        # union by product path, so total coverage is ~brands × 20 instead of a
+        # single 20-item grid. If every brand segment yields nothing (e.g. the
+        # filter scheme changed), fall back to the unfiltered search grid so
+        # coverage never regresses below the original ~20.
+        cards_by_key: dict[str, dict] = {}
         parse_errors = 0
-        for i, segment_url in enumerate(segments):
-            if len(cards_by_href) >= MAX_ITEMS:
+
+        for i, slug in enumerate(BRAND_SLUGS):
+            if len(cards_by_key) >= MAX_ITEMS:
                 break
-            # Pace segment loads with the configured per-store delay. The first
-            # segment for the fallback case is already loaded above; brand
-            # segments each get their own goto in _harvest_grid.
-            if i > 0 or brand_urls:
+            if i > 0:
+                # Pace brand-segment loads with the configured per-store delay.
                 time.sleep(self.scroll_pause_s)
             try:
-                for card in self._harvest_grid(page, segment_url):
-                    href = card.get("href")
-                    if href and href not in cards_by_href:
-                        cards_by_href[href] = card
-                        if len(cards_by_href) >= MAX_ITEMS:
+                for card in self._harvest_grid(page, _brand_url(slug)):
+                    key = (card.get("href") or "").split("?")[0]  # ignore offering_id
+                    if key and key not in cards_by_key:
+                        cards_by_key[key] = card
+                        if len(cards_by_key) >= MAX_ITEMS:
                             break
             except Exception:
-                # One bad brand/segment must never abort the whole run.
+                # One bad brand segment must never abort the whole run.
                 parse_errors += 1
                 continue
 
+        if not cards_by_key:
+            # Fallback: unfiltered search grid (the original ~20 behavior).
+            try:
+                for card in self._harvest_grid(page, SEARCH_BASE):
+                    key = (card.get("href") or "").split("?")[0]
+                    if key and key not in cards_by_key:
+                        cards_by_key[key] = card
+            except Exception:
+                parse_errors += 1
+
         offers: list[RawOffer] = []
-        for card in cards_by_href.values():
+        for card in cards_by_key.values():
             try:
                 offer = self._parse_card(card)
                 if offer:
@@ -128,40 +160,6 @@ class BTechAdapter:
             offers=offers,
             parse_errors=parse_errors,
         )
-
-    def _discover_brand_urls(self, page, base_url: str) -> list[str]:
-        """Best-effort: read the category page's own brand-facet links so we do
-        not hard-code a URL scheme. Returns absolute, filtered category URLs
-        (those pointing back into the same category but carrying a facet query),
-        de-duplicated and excluding the base. Returns [] on any failure."""
-        try:
-            hrefs = page.evaluate(
-                """(basePath) => {
-                    const out = new Set();
-                    for (const a of document.querySelectorAll('a[href]')) {
-                        const href = a.getAttribute('href') || '';
-                        // Same category path, but a facet/filter variant (has a
-                        // query string) — brand facets look like this on B.TECH.
-                        if (href.includes(basePath) && href.includes('?')) {
-                            out.add(href);
-                        }
-                    }
-                    return Array.from(out);
-                }""",
-                f"/ar/c/{list(CATEGORY_MAP.keys())[0]}",
-            )
-        except Exception:
-            return []
-
-        seen: set[str] = set()
-        urls: list[str] = []
-        for href in hrefs or []:
-            url = href if href.startswith("http") else f"{BASE}{href}"
-            if url == base_url or url in seen:
-                continue
-            seen.add(url)
-            urls.append(url)
-        return urls
 
     def _harvest_grid(self, page, url: str) -> list[dict]:
         """Load a grid URL, infinite-scroll it, and return raw card dicts.

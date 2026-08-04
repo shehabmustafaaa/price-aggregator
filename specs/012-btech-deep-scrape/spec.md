@@ -12,13 +12,16 @@
 
 ### Session 2026-08-04
 
-- **Traversal strategy**: Discover brand-filter links from the category page's own DOM (the
-  brand facet/sidebar), then visit each discovered brand grid. This avoids hard-coding a URL
-  scheme we're unsure of and degrades gracefully (FR-006) if B.TECH changes it. Subcategory
-  traversal is not needed if brand facets are present.
-- **Caps**: Overall cap of ~400 unique listings per run and a per-segment scroll cap unchanged
-  (25). No hard wall-clock timer in v1 — the item cap plus the existing per-store delay keep a
-  run inside the 30-min stale-job window; a timer can be added later if needed.
+- **Traversal strategy** (revised after live investigation, see plan.md "Investigation
+  findings"): B.TECH hard-caps *every* grid at ~20 (category, search, and per-brand) with no
+  pagination, no "load more", and no usable page/offset param; brand facets are client-side
+  buttons, not links. BUT applying a brand facet produces a shareable search URL
+  (`…?q=mobiles+tablets+mobiles&filters={"brands":["<slug>"]}`). So we harvest one brand at a
+  time by constructing that URL per known brand slug and unioning the results — ~12 brands ×
+  up to 20 ≈ 200+ unique phones. Verified live: 218 offers.
+- **Caps**: Overall cap of ~400 unique listings per run; per-brand scroll cap unchanged (25).
+  No hard wall-clock timer in v1 — the item cap plus the existing per-store delay keep a run
+  inside the 30-min stale-job window.
 - **On segment failure**: Skip the segment, increment the run's parse-error counter, continue
   to the next. Never abort the whole run for one bad segment.
 - **Pacing**: Keep the existing per-store request delay between segment page-loads; deeper
