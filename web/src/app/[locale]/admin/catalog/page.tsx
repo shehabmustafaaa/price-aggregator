@@ -32,12 +32,20 @@ export default async function CatalogAdminPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Catalog ({products.length} shown)</h1>
-        <Link
-          href="/admin/catalog/duplicates"
-          className="text-sm text-blue-400 underline hover:text-blue-300"
-        >
-          Duplicate suggestions →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/catalog/needs-names"
+            className="text-sm text-blue-400 underline hover:text-blue-300"
+          >
+            Needs translation →
+          </Link>
+          <Link
+            href="/admin/catalog/duplicates"
+            className="text-sm text-blue-400 underline hover:text-blue-300"
+          >
+            Duplicate suggestions →
+          </Link>
+        </div>
       </div>
 
       <form method="get" className="flex gap-2 text-sm">

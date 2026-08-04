@@ -38,7 +38,10 @@ _Last updated: 2026-07-23_
    shareable `…&filters={"brands":["slug"]}` search URL. Adapter now harvests per brand slug and
    unions by product path → **218 offers** live (vs 20). Per-brand still caps at 20, so very
    large brands (Samsung/Xiaomi) are truncated — future refinement could add a second facet.
-8. **Editorial cleanup of auto-created product names** (nameEn=nameAr raw titles).
+8. ~~**Editorial cleanup of auto-created product names**~~ — **DONE 2026-08-04** (spec 013):
+   admin-only `/admin/catalog/needs-names` lists products whose English name still contains
+   Arabic (the auto-create signature), inline-edit nameEn/nameAr/slug; a row drops off once the
+   English name is Latin (no extra state). Reuses `updateProduct`; linked from the catalog page.
 9. **2B via residential proxy** or scheduled home-PC runs.
 10. **SEO polish** — deferred by owner ("seo will be later").
 
