@@ -8,6 +8,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // DB-integration tests are a separate, opt-in suite (need a Postgres);
+    // keep the default `npm test` pure/hermetic. Run them with test:integration.
+    exclude: ["**/node_modules/**", "src/**/*.integration.test.ts"],
   },
   resolve: {
     alias: {

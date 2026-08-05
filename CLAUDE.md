@@ -23,6 +23,7 @@ npm run build                 # rm -rf .next first if a dev server was running (
 npm run lint
 npm test                      # Vitest unit tests (pure ingest/matching logic; no DB) — run before matcher tweaks
 npm run test:watch            # Vitest watch mode
+npm run test:integration      # DB-integration tests (matchOffer/resolveVariant/pipeline) — needs a test DB (see below)
 
 # one-off maintenance scripts (web/scripts/): run with npx tsx, e.g.
 npx tsx scripts/make-admin.ts <email> [password]
@@ -41,8 +42,12 @@ Unit tests (Vitest, `web/`) cover the pure ingest/matching logic — price sanit
 filter, colour canonicalization, Arabic text normalization, similarity primitives + duplicate
 scoring, variant config — run with `npm test` (no DB needed); run these before/after matcher
 tweaks. DB-touching orchestration (`matchOffer` catalog query, `resolveVariant`, full
-`pipeline.ts`) has no automated tests yet — verify those end-to-end by running an adapter and
-checking the per-URL audit at `/admin/scraper` → run detail.
+`pipeline.ts`) is covered by the **integration** suite (`*.integration.test.ts`, `npm run
+test:integration`) against a real Postgres — one-time setup: `createdb price_aggregator_test`
+then `DATABASE_URL="postgresql://postgres:postgres@localhost:5432/price_aggregator_test?schema=public" npx prisma migrate deploy`
+(override with `TEST_DATABASE_URL`; the harness refuses any DB whose name lacks "test", and each
+test truncates all tables). Scraper *adapters* still have no automated tests — verify those by
+running the adapter and checking the per-URL audit at `/admin/scraper` → run detail.
 
 ## Version gotchas (do not skip)
 

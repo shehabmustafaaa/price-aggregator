@@ -30,8 +30,10 @@ _Last updated: 2026-07-23_
 5. ~~**Automated tests for ingest/matching**~~ — **DONE 2026-08-02** (spec 011): Vitest unit
    suite (`web/`, `npm test`) over the pure logic — price sanity, accessory filter, colour
    canonicalization, Arabic text normalization, similarity primitives + duplicate scoring,
-   variant config (31 tests, no DB). Follow-on: DB-integration tests for `matchOffer`/
-   `resolveVariant`/`pipeline`.
+   variant config (31 tests, no DB). Follow-on **DONE 2026-08-05** (spec 015): opt-in
+   DB-integration suite (`npm run test:integration`, 14 tests) covering `matchOffer`,
+   `resolveVariant`, and the full `pipeline.ingest` against a dedicated `price_aggregator_test`
+   Postgres (guarded, truncated per test; excluded from the hermetic default `npm test`).
 6. ~~**Spec side-by-side comparison**~~ — **DONE 2026-08-05** (spec 014): device-only compare
    set (localStorage, cap 4) via a toggle on product cards + a floating tray; server-rendered
    `/compare?p=slug1,slug2,…` table reusing `buildFeatures`, rows aligned by label with differing
