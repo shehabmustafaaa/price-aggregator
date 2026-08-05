@@ -34,7 +34,7 @@ cd scraper
 python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
 .venv/Scripts/pip install -r requirements-browser.txt   # only for B.TECH (Playwright)
 .venv/Scripts/python main.py mock        # end-to-end pipeline test with fake data
-.venv/Scripts/python main.py dream2000   # one real scrape
+.venv/Scripts/python main.py dream2000   # one real scrape (also: miamicenters, btech)
 .venv/Scripts/python main.py daemon --poll 30   # poll /api/scraper/claim — ONE instance only
 ```
 
@@ -84,8 +84,11 @@ on **last attempt of any status** so failing stores back off instead of flooding
 adapter → `/api/scraper/complete`. Per-store interval/delay/enabled configured in
 `/admin/scraper`. Adapters (`scraper/adapters/`) implement `scrape() -> list[ScrapeResult]`;
 a new store = a new adapter file registered in `main.py` build_adapter. Dream2000 = Shopify
-products.json API; B.TECH = Playwright/Chromium (launched --no-sandbox for root); 2B =
-Magento HTML but blocks datacenter IPs (disabled in prod).
+products.json API; Miami Centers = WooCommerce Store API (`/wp-json/wc/store/v1/products`,
+categories 58 Android + 91 iPhone); B.TECH = Playwright/Chromium (--no-sandbox for root,
+per-brand filter URLs to beat the 20-item grid cap); 2B = Magento HTML but blocks datacenter
+IPs (disabled in prod). New store also needs a `stores` row — seed.ts covers fresh setups;
+for an existing DB use a one-off `scripts/add-<store>.ts`.
 
 **Web app conventions**: all business logic is plain functions under `web/src/lib/`
 (catalog/ ingest/ scraper/ auth/ alerts/ admin/ tracking/) — route handlers, server actions,

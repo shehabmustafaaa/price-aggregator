@@ -53,6 +53,23 @@ async function main() {
     create: { categoryId: phones.id, storeId: dream.id },
   });
 
+  // --- Store #2: Miami Centers (WooCommerce, spec 016) ---
+  const miami = await prisma.store.upsert({
+    where: { slug: "miamicenters" },
+    update: {},
+    create: {
+      slug: "miamicenters",
+      name: "Miami Centers",
+      domain: "miamicenters.com",
+    },
+  });
+
+  await prisma.categoryStore.upsert({
+    where: { categoryId_storeId: { categoryId: phones.id, storeId: miami.id } },
+    update: {},
+    create: { categoryId: phones.id, storeId: miami.id },
+  });
+
   // --- Brands ---
   const brandNames = ["Samsung", "Apple", "Xiaomi", "Oppo", "Realme", "Honor", "Infinix", "Vivo", "Nokia", "Tecno"];
   const brands: Record<string, number> = {};

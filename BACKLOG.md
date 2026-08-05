@@ -5,11 +5,14 @@ _Last updated: 2026-07-23_
 ## Current status
 
 - **Production is LIVE**: https://shehabw1.space (aaPanel host, see DEPLOY.md + CLAUDE.md).
-- Scraping automatically every ~3h on the server: **Dream2000** (~650 offers, Shopify API)
-  and **B.TECH** (~20 offers, Playwright). **2B is hidden** — it 403-blocks datacenter IPs;
-  re-enabling needs a home-PC run or an Egyptian residential proxy (~$5–10/mo).
+- Scraping automatically every ~3h on the server: **Dream2000** (~650 offers, Shopify API),
+  **B.TECH** (~200 offers via per-brand filter URLs, Playwright — spec 012), and
+  **Miami Centers** (~426 offers, WooCommerce Store API — spec 016, needs the store row inserted
+  + deploy). **2B is hidden** — it 403-blocks datacenter IPs; re-enabling needs a home-PC run or
+  an Egyptian residential proxy (~$5–10/mo).
 - Speckit installed (`.specify/`, `/speckit-*` skills); constitution v1.0.0 ratified.
-- No automated tests yet.
+- Tests: pure unit suite (`npm test`, 31) + opt-in DB-integration suite (`npm run
+  test:integration`, 14) — spec 011/015. Scraper adapters verified manually.
 
 ## Backlog (rough value-for-effort order)
 

@@ -27,6 +27,7 @@ from adapters.dream2000 import Dream2000Adapter
 from adapters.mock_store import MockStoreAdapter
 from adapters.twob import TwoBAdapter
 from adapters.btech import BTechAdapter
+from adapters.miamicenters import MiamiCentersAdapter
 from core import ingest_client
 
 
@@ -37,6 +38,8 @@ def build_adapter(name: str, price_shift: float = 0.0, request_delay_s: float | 
         return TwoBAdapter(request_delay_s=request_delay_s)
     if name == "btech":
         return BTechAdapter(request_delay_s=request_delay_s)
+    if name == "miamicenters":
+        return MiamiCentersAdapter(request_delay_s=request_delay_s)
     if name in ("mock", "mock-store"):
         return MockStoreAdapter(price_shift=price_shift)
     raise SystemExit(f"Unknown store adapter: {name}")
