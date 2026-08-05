@@ -1,6 +1,7 @@
 import { getTranslations, getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { bestPrice } from "@/lib/catalog/products";
+import CompareToggle from "@/components/CompareToggle";
 
 interface ProductCardProps {
   product: {
@@ -26,8 +27,16 @@ export default async function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       href={`/p/${product.slug}`}
-      className="block rounded-xl border border-gray-800 bg-gray-900 p-4 hover:border-blue-500/60 transition-colors"
+      className="relative block rounded-xl border border-gray-800 bg-gray-900 p-4 hover:border-blue-500/60 transition-colors"
     >
+      <CompareToggle
+        item={{
+          slug: product.slug,
+          nameEn: product.nameEn,
+          nameAr: product.nameAr,
+          image: product.images[0] ?? null,
+        }}
+      />
       {product.images[0] ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

@@ -32,6 +32,7 @@
     "resultsCount": "{count} منتج",
     "prev": "السابق",
     "next": "التالي",
+    "pageOf": "صفحة {page} من {total}",
     "offers": "العروض",
     "colors": "الألوان",
     "priceHistory": "تاريخ السعر (٩٠ يوم)",
@@ -111,5 +112,23 @@
   },
   "recentlyViewed": {
     "heading": "شوهدت مؤخراً"
+  },
+  "compare": {
+    "pageTitle": "قارن الهواتف",
+    "heading": "قارن الهواتف",
+    "spec": "المواصفة",
+    "cheapest": "الأرخص",
+    "differs": "يختلف بين الهواتف",
+    "storeCount": "{count, plural, zero {# متجر} one {متجر واحد} two {متجران} few {# متاجر} many {# متجراً} other {# متجر}}",
+    "needTwoPrompt": "اختر هاتفين على الأقل للمقارنة — أضِفهما بزر «قارن» على أي منتج.",
+    "browse": "تصفّح الهواتف",
+    "add": "أضِف للمقارنة",
+    "remove": "إزالة",
+    "addShort": "قارن",
+    "addedShort": "أُضيف ✓",
+    "trayTitle": "{count, plural, zero {# هاتف للمقارنة} one {هاتف واحد للمقارنة} two {هاتفان للمقارنة} few {# هواتف للمقارنة} many {# هاتفاً للمقارنة} other {# هاتف للمقارنة}}",
+    "clear": "مسح",
+    "compareCta": "قارن ({count})",
+    "needTwo": "أضِف واحداً آخر للمقارنة"
   }
 }

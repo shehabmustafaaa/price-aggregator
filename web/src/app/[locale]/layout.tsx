@@ -6,6 +6,7 @@ import { routing } from "@/i18n/routing";
 import { Link } from "@/i18n/navigation";
 import "../globals.css";
 import SearchBox from "@/components/SearchBox";
+import CompareTray from "@/components/CompareTray";
 import { getAdminUser } from "@/lib/auth/admin";
 
 export function generateStaticParams() {
@@ -94,6 +95,7 @@ export default async function LocaleLayout({
           <main className="mx-auto max-w-6xl px-4 py-6 w-full flex-1">
             {children}
           </main>
+          <CompareTray />
           <footer className="border-t border-gray-800 py-6 text-center text-sm text-gray-500">
             <nav className="flex flex-wrap justify-center gap-x-4 gap-y-1 mb-2">
               <Link href="/about" className="hover:text-gray-300">

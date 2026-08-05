@@ -32,6 +32,7 @@
     "resultsCount": "{count} products",
     "prev": "Previous",
     "next": "Next",
+    "pageOf": "Page {page} of {total}",
     "offers": "Offers",
     "colors": "Colors",
     "priceHistory": "Price history (90 days)",
@@ -111,5 +112,23 @@
   },
   "recentlyViewed": {
     "heading": "Recently viewed"
+  },
+  "compare": {
+    "pageTitle": "Compare phones",
+    "heading": "Compare phones",
+    "spec": "Spec",
+    "cheapest": "cheapest",
+    "differs": "Differs between phones",
+    "storeCount": "{count, plural, one {# store} other {# stores}}",
+    "needTwoPrompt": "Pick at least two phones to compare — add them with the “Compare” button on any product.",
+    "browse": "Browse phones",
+    "add": "Add to compare",
+    "remove": "Remove",
+    "addShort": "Compare",
+    "addedShort": "Added ✓",
+    "trayTitle": "{count, plural, one {# phone to compare} other {# phones to compare}}",
+    "clear": "Clear",
+    "compareCta": "Compare ({count})",
+    "needTwo": "Add one more to compare"
   }
 }

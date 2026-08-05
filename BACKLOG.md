@@ -32,7 +32,12 @@ _Last updated: 2026-07-23_
    canonicalization, Arabic text normalization, similarity primitives + duplicate scoring,
    variant config (31 tests, no DB). Follow-on: DB-integration tests for `matchOffer`/
    `resolveVariant`/`pipeline`.
-6. **Spec side-by-side comparison** (2–4 products) — deferred by owner. _Large._
+6. ~~**Spec side-by-side comparison**~~ — **DONE 2026-08-05** (spec 014): device-only compare
+   set (localStorage, cap 4) via a toggle on product cards + a floating tray; server-rendered
+   `/compare?p=slug1,slug2,…` table reusing `buildFeatures`, rows aligned by label with differing
+   rows tinted, cheapest price highlighted, bilingual/RTL, columns link to products. Shareable URL
+   works with no device state. Also improved the numeric pager (first/last + ellipsis + "page X
+   of Y").
 7. ~~**Deeper B.TECH scrape**~~ — **DONE 2026-08-04** (spec 012): B.TECH hard-caps every grid
    at ~20 (no pagination/API; brand facets are JS buttons), but applying a brand facet yields a
    shareable `…&filters={"brands":["slug"]}` search URL. Adapter now harvests per brand slug and
