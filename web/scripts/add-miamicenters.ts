@@ -1,5 +1,6 @@
-/** Insert the Miami Centers store (spec 016) into an existing database and map
- *  it to the phones category. Idempotent — safe to run repeatedly.
+/** Insert the Miami Centers store (spec 016) into an existing database, ensure
+ *  the Home Appliances category exists (spec 017), and map the store to both
+ *  the phones and appliances categories. Idempotent — safe to run repeatedly.
  *  Run on the server: npx tsx scripts/add-miamicenters.ts */
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -20,21 +21,34 @@ async function main() {
     },
   });
 
+  // Home Appliances category (spec 017) — create if missing.
+  const appliances = await prisma.category.upsert({
+    where: { slug: "home-appliances" },
+    update: {},
+    create: {
+      slug: "home-appliances",
+      nameEn: "Home Appliances",
+      nameAr: "الأجهزة المنزلية",
+    },
+  });
+
   const phones = await prisma.category.findUnique({
     where: { slug: "mobile-phones" },
   });
-  if (phones) {
+
+  for (const category of [phones, appliances]) {
+    if (!category) continue;
     await prisma.categoryStore.upsert({
       where: {
-        categoryId_storeId: { categoryId: phones.id, storeId: store.id },
+        categoryId_storeId: { categoryId: category.id, storeId: store.id },
       },
       update: {},
-      create: { categoryId: phones.id, storeId: store.id },
+      create: { categoryId: category.id, storeId: store.id },
     });
   }
 
   console.log(
-    `Miami Centers store ready (id=${store.id}). It will be scheduled by the daemon.`,
+    `Miami Centers ready (id=${store.id}); Home Appliances category ready (id=${appliances.id}). The daemon will schedule the store.`,
   );
 }
 

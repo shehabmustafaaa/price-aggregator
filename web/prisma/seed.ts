@@ -36,6 +36,17 @@ async function main() {
     });
   }
 
+  // --- Category: home appliances (2nd category — spec 017) ---
+  const appliances = await prisma.category.upsert({
+    where: { slug: "home-appliances" },
+    update: {},
+    create: {
+      slug: "home-appliances",
+      nameEn: "Home Appliances",
+      nameAr: "الأجهزة المنزلية",
+    },
+  });
+
   // --- Store #1: Dream2000 ---
   const dream = await prisma.store.upsert({
     where: { slug: "dream2000" },
@@ -68,6 +79,13 @@ async function main() {
     where: { categoryId_storeId: { categoryId: phones.id, storeId: miami.id } },
     update: {},
     create: { categoryId: phones.id, storeId: miami.id },
+  });
+
+  // Miami Centers also supplies home appliances.
+  await prisma.categoryStore.upsert({
+    where: { categoryId_storeId: { categoryId: appliances.id, storeId: miami.id } },
+    update: {},
+    create: { categoryId: appliances.id, storeId: miami.id },
   });
 
   // --- Brands ---

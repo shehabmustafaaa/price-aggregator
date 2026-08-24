@@ -28,14 +28,21 @@ PER_PAGE = 100
 REQUEST_DELAY_S = 2.0
 MAX_RETRIES = 5
 
-# WooCommerce phone category trees (recursive) → our canonical category slug.
-PHONE_CATEGORY_IDS = [58, 91]
-CATEGORY_SLUG = "mobile-phones"
+# WooCommerce category trees (the Store API `category` filter is recursive),
+# grouped by our canonical category slug. Each group carries a `kind` that
+# selects how products are parsed:
+#   phone     — parse storage/RAM/colour, exclude non-phone accessory markers
+#   appliance — brand-only, no storage/RAM; the tree is already curated
+CATEGORY_GROUPS = [
+    {"ids": [58, 91], "slug": "mobile-phones", "kind": "phone"},
+    {"ids": [1639], "slug": "home-appliances", "kind": "appliance"},
+]
 
-# A product carrying any of these markers in its category slugs is an accessory
-# or non-phone (covers, cases, wearables, tablets, laptops, power banks,
-# appliances…) — skip it. The web-side title classifier is a second net.
-ACCESSORY_MARKERS = (
+# During the PHONE scrape, a product whose category slugs carry any of these
+# markers is an accessory or a non-phone (cover, wearable, tablet, laptop, or a
+# home-appliance like an air-fryer) → skip it. This list is applied ONLY to the
+# phone kind; appliances would be wrongly dropped by markers like "airfryer".
+PHONE_EXCLUDE_MARKERS = (
     "cover", "case", "accessor", "wearable", "tablet", "watch", "airpod",
     "powerbank", "power-bank", "charger", "cable", "screen", "mac", "ipad",
     "laptop", "scooter", "airfryer", "iron", "mixer", "smart", "band",
@@ -75,29 +82,34 @@ class MiamiCentersAdapter:
         self.request_delay_s = request_delay_s or REQUEST_DELAY_S
 
     def scrape(self) -> list[ScrapeResult]:
-        offers: list[RawOffer] = []
-        parse_errors = 0
-        seen: set[int] = set()
+        results: list[ScrapeResult] = []
         with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30) as client:
-            for category_id in PHONE_CATEGORY_IDS:
-                try:
-                    cat_offers, cat_errors = self._scrape_category(client, category_id, seen)
-                    offers.extend(cat_offers)
-                    parse_errors += cat_errors
-                except Exception:
-                    # One bad category tree must not abort the whole run.
-                    parse_errors += 1
-        return [
-            ScrapeResult(
-                store_slug=self.store_slug,
-                category_slug=CATEGORY_SLUG,
-                offers=offers,
-                parse_errors=parse_errors,
-            )
-        ]
+            for group in CATEGORY_GROUPS:
+                offers: list[RawOffer] = []
+                parse_errors = 0
+                seen: set[int] = set()  # dedupe within a group, not across
+                for category_id in group["ids"]:
+                    try:
+                        cat_offers, cat_errors = self._scrape_category(
+                            client, category_id, group["kind"], seen
+                        )
+                        offers.extend(cat_offers)
+                        parse_errors += cat_errors
+                    except Exception:
+                        # One bad category tree must not abort the whole run.
+                        parse_errors += 1
+                results.append(
+                    ScrapeResult(
+                        store_slug=self.store_slug,
+                        category_slug=group["slug"],
+                        offers=offers,
+                        parse_errors=parse_errors,
+                    )
+                )
+        return results
 
     def _scrape_category(
-        self, client: httpx.Client, category_id: int, seen: set[int]
+        self, client: httpx.Client, category_id: int, kind: str, seen: set[int]
     ) -> tuple[list[RawOffer], int]:
         offers: list[RawOffer] = []
         parse_errors = 0
@@ -115,9 +127,11 @@ class MiamiCentersAdapter:
                     pid = product.get("id")
                     if pid in seen:
                         continue
-                    if self._is_accessory(product):
+                    # The phone scrape drops covers/wearables/appliances; the
+                    # appliance tree is already curated, so no exclusion there.
+                    if kind == "phone" and self._is_phone_excluded(product):
                         continue
-                    offer = self._parse_product(product)
+                    offer = self._parse_product(product, kind)
                     if offer:
                         seen.add(pid)
                         offers.append(offer)
@@ -142,13 +156,13 @@ class MiamiCentersAdapter:
         resp.raise_for_status()
         return resp
 
-    def _is_accessory(self, product: dict) -> bool:
+    def _is_phone_excluded(self, product: dict) -> bool:
         slugs = " ".join(
             (c.get("slug") or "").lower() for c in product.get("categories", [])
         )
-        return any(marker in slugs for marker in ACCESSORY_MARKERS)
+        return any(marker in slugs for marker in PHONE_EXCLUDE_MARKERS)
 
-    def _parse_product(self, product: dict) -> RawOffer | None:
+    def _parse_product(self, product: dict, kind: str) -> RawOffer | None:
         title = (product.get("name") or "").strip()
         if len(title) < 3:
             return None
@@ -167,24 +181,27 @@ class MiamiCentersAdapter:
         ][:6]
         image_url = image_urls[0] if image_urls else None
 
+        # Phones carry storage/RAM/colour variant attrs; appliances don't (each
+        # appliance model is a single variant compared across stores).
         attrs: dict = {}
-        storage_end: int | None = None
-        spec = SPEC_RE.search(title)
-        if spec:
-            attrs["storage_gb"] = int(spec.group(1))
-            attrs["ram_gb"] = int(spec.group(2))
-            storage_end = spec.end()
-        else:
-            m = STORAGE_ONLY_RE.search(title)  # iPhone-style single storage
-            if m:
-                value = int(m.group(1))
-                if m.group(2).lower() == "tb":
-                    value *= 1024
-                attrs["storage_gb"] = value
-                storage_end = m.end()
-        color = self._color_from_title(title, storage_end)
-        if color:
-            attrs["color"] = color
+        if kind == "phone":
+            storage_end: int | None = None
+            spec = SPEC_RE.search(title)
+            if spec:
+                attrs["storage_gb"] = int(spec.group(1))
+                attrs["ram_gb"] = int(spec.group(2))
+                storage_end = spec.end()
+            else:
+                m = STORAGE_ONLY_RE.search(title)  # iPhone-style single storage
+                if m:
+                    value = int(m.group(1))
+                    if m.group(2).lower() == "tb":
+                        value *= 1024
+                    attrs["storage_gb"] = value
+                    storage_end = m.end()
+            color = self._color_from_title(title, storage_end)
+            if color:
+                attrs["color"] = color
 
         return RawOffer(
             url=product.get("permalink") or f"{BASE}/?p={product.get('id')}",
@@ -202,6 +219,7 @@ class MiamiCentersAdapter:
         )
 
     def _detect_brand(self, product: dict, title: str) -> str | None:
+        # 1) Known phone brand from category slug or title (curated, canonical).
         for c in product.get("categories", []):
             slug = (c.get("slug") or "").lower()
             for key, brand in KNOWN_BRANDS.items():
@@ -211,6 +229,15 @@ class MiamiCentersAdapter:
         for key, brand in KNOWN_BRANDS.items():
             if key in lowered:
                 return brand
+        # 2) WooCommerce `brands` field (populated for many appliances).
+        brands = product.get("brands") or []
+        if brands and brands[0].get("name"):
+            return brands[0]["name"].strip()
+        # 3) Fallback: the leading word of the title (appliance titles start with
+        #    the brand — "Braun Hand Blender…", "Kenwood Airfryer…").
+        first = title.split()[0] if title.split() else ""
+        if first.isalpha() and len(first) >= 3:
+            return first.capitalize()
         return None
 
     def _color_from_title(self, title: str, storage_end: int | None) -> str | None:

@@ -150,3 +150,74 @@ describe("ingest pipeline (integration)", () => {
     expect(event?.outcome).toBe("REVIEW_QUEUED");
   });
 });
+
+/** A second category proves the pipeline is category-generic (spec 017):
+ *  appliances carry no storage/RAM, so each model resolves to a single variant,
+ *  and the phone-only accessory filter must not touch them. */
+describe("ingest pipeline — home appliances (integration)", () => {
+  async function seedAppliances() {
+    await seedBase(); // gives us the store (dream2000) + phones category
+    return prisma.category.create({
+      data: {
+        slug: "home-appliances",
+        nameEn: "Home Appliances",
+        nameAr: "الأجهزة المنزلية",
+      },
+    });
+  }
+
+  function appliancePayload(offers: RawOffer[]): IngestPayload {
+    return {
+      store_slug: "dream2000",
+      category_slug: "home-appliances",
+      offers,
+      parse_errors: 0,
+    };
+  }
+
+  it("creates one product with exactly one variant per appliance", async () => {
+    const category = await seedAppliances();
+    const res = await ingest(
+      appliancePayload([
+        rawOffer({
+          title: "Braun Hand Blender MultiQuick 5 1000W",
+          brand: "Braun",
+          price: 4220,
+          url: "https://miamicenters.com/product/braun-blender/",
+        }),
+        rawOffer({
+          title: "Kenwood Airfryer 5L 1500W LCD",
+          brand: "Kenwood",
+          price: 6330,
+          url: "https://miamicenters.com/product/kenwood-airfryer/",
+        }),
+      ]),
+    );
+
+    expect(res.offersUpserted).toBe(2);
+    const products = await prisma.product.findMany({
+      where: { categoryId: category.id },
+      include: { variants: true },
+    });
+    expect(products).toHaveLength(2);
+    // No storage attr → each appliance model is a single comparable variant.
+    expect(products.every((p) => p.variants.length === 1)).toBe(true);
+  });
+
+  it("does NOT apply the phone accessory filter outside the phones category", async () => {
+    // "شاحن" (charger) leads the title — in the phones category this would be
+    // skipped as an accessory; under appliances it must be ingested normally.
+    const category = await seedAppliances();
+    const res = await ingest(
+      appliancePayload([
+        rawOffer({
+          title: "شاحن سريع 65 وات",
+          price: 1500,
+          url: "https://miamicenters.com/product/fast-charger/",
+        }),
+      ]),
+    );
+    expect(res.offersUpserted).toBe(1);
+    expect(await prisma.product.count({ where: { categoryId: category.id } })).toBe(1);
+  });
+});

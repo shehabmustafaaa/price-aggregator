@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Asaar (أسعار) — Egypt-market price-comparison site (mobile phones first, category-extensible).
+Asaar (أسعار) — Egypt-market price-comparison site. Two live categories: `mobile-phones` and
+`home-appliances` (spec 017); the taxonomy is extensible — a new category is rows + an adapter
+category mapping, not a migration.
 Two independent services: `web/` (Next.js — the entire web app, no separate API service) and
 `scraper/` (Python — scrapes stores, POSTs to the web app's `/api/ingest`). Full plan and the
 binding guardrails live in `PLAN.md` (§6); project principles in `.specify/memory/constitution.md`;
@@ -84,8 +86,10 @@ on **last attempt of any status** so failing stores back off instead of flooding
 adapter → `/api/scraper/complete`. Per-store interval/delay/enabled configured in
 `/admin/scraper`. Adapters (`scraper/adapters/`) implement `scrape() -> list[ScrapeResult]`;
 a new store = a new adapter file registered in `main.py` build_adapter. Dream2000 = Shopify
-products.json API; Miami Centers = WooCommerce Store API (`/wp-json/wc/store/v1/products`,
-categories 58 Android + 91 iPhone); B.TECH = Playwright/Chromium (--no-sandbox for root,
+products.json API; Miami Centers = WooCommerce Store API (`/wp-json/wc/store/v1/products`) with
+`CATEGORY_GROUPS` — one `ScrapeResult` per canonical category (58+91 → phones, 1639 → home
+appliances) and per-`kind` parsing (the phone exclusion list must NEVER be applied to
+appliances, or air-fryers/irons/mixers get dropped); B.TECH = Playwright/Chromium (--no-sandbox for root,
 per-brand filter URLs to beat the 20-item grid cap); 2B = Magento HTML but blocks datacenter
 IPs (disabled in prod). New store also needs a `stores` row — seed.ts covers fresh setups;
 for an existing DB use a one-off `scripts/add-<store>.ts`.
