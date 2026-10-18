@@ -20,7 +20,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "common" });
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   return {
+    // Makes every relative URL (OG, canonical) resolve to the real https origin
+    // instead of the proxied http:// request.
+    metadataBase: new URL(siteUrl),
     title: {
       default: t("siteName"),
       template: `%s | ${t("siteName")}`,
