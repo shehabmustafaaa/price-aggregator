@@ -2,9 +2,11 @@
 
 A reproducible from-scratch setup. Process model: **aaPanel provides the
 domain, Nginx reverse-proxy, and SSL only** — the Node web app and the Python
-scraper are both run as **systemd services** (`asaar-web`, `asaar-scraper`).
-**No pm2, and no aaPanel "Node Project"** (an aaPanel Node Project respawns the
-app and fights systemd — do not create one). Project root on the host:
+web app runs as an **aaPanel Node Project** and the scraper as a **systemd
+service** (`asaar-scraper`). **No pm2.** Run exactly ONE web manager: do NOT
+also install a systemd `asaar-web` unit — the Node Project and a systemd unit
+race for port 3000 on reboot and one crash-loops on `EADDRINUSE`. Project root
+on the host:
 `/www/wwwroot/shehabw1`.
 
 The only things you can't regenerate are the **PostgreSQL database** and the
@@ -90,18 +92,24 @@ python3 -m venv .venv
 > server — leave them **disabled** in `/admin/scraper` and run them from your
 > home PC (`main.py 2b`) pointing `scraper/.env` `INGEST_URL` at the live domain.
 
-## 8. Install the two systemd services (one-time)
+## 8a. Web app — aaPanel Node Project (one-time)
 
-The web unit is versioned in the repo at [`deploy/asaar-web.service`](deploy/asaar-web.service).
-Install it, and create the scraper unit:
+aaPanel → **Node Project** → Add, with:
+- **Path**: `/www/wwwroot/shehabw1/web`
+- **Run opt**: Custom command → `npm run start -- -p 3000`
+- **Port**: `3000`  ·  **User**: `www`  ·  **Pkg Manager**: `npm` (not pnpm — repo uses npm)
+- **Node**: v22  ·  **Boot**: ✅ "Follow the system to start the service"
+
+Then **Start**. Verify with `ss -ltnp | grep :3000` (one node listener) — the panel's
+Stopped/Running label has proven unreliable, so trust `ss`/`curl`, not the label.
+
+> Do NOT also create a systemd `asaar-web` unit. If one exists from an earlier setup, remove it:
+> `systemctl disable --now asaar-web; rm -f /etc/systemd/system/asaar-web.service; systemctl daemon-reload`
+> Otherwise both grab port 3000 on reboot and one crash-loops (`EADDRINUSE`).
+
+## 8b. Scraper — systemd service (one-time)
 
 ```bash
-# --- Web (Next.js) ---
-cp /www/wwwroot/shehabw1/deploy/asaar-web.service /etc/systemd/system/asaar-web.service
-# IMPORTANT: verify the www user can run `npm`. If not, edit the ExecStart line
-# in the unit to an absolute node path (the file has instructions inline):
-sudo -u www bash -lc 'which node && which npm'
-
 # --- Scraper (Python daemon) ---
 cat >/etc/systemd/system/asaar-scraper.service <<'UNIT'
 [Unit]
@@ -121,11 +129,10 @@ RestartSec=5
 WantedBy=multi-user.target
 UNIT
 
-# --- Enable + start both ---
+# --- Enable + start the scraper ---
 chown -R www:www /www/wwwroot/shehabw1
 systemctl daemon-reload
-systemctl enable --now asaar-web asaar-scraper
-systemctl status asaar-web --no-pager
+systemctl enable --now asaar-scraper
 systemctl status asaar-scraper --no-pager
 ```
 > Exactly ONE scraper instance may run — systemd guarantees this. Never also
@@ -138,8 +145,9 @@ systemctl status asaar-scraper --no-pager
 
 ## 10. Verify
 ```bash
-systemctl is-active asaar-web asaar-scraper   # both -> active
-journalctl -u asaar-web -n 30 --no-pager      # web startup log
+ss -ltnp | grep :3000                         # web: one node listener (panel-managed)
+systemctl is-active asaar-scraper             # scraper -> active
+curl -I https://shehabw1.space/en             # 200
 ```
 - Open https://shehabw1.space → the scraper page shows ONE "Save all settings".
 - In `/admin/scraper`, uncheck **B.TECH** and **2B**, Save.
@@ -149,17 +157,18 @@ journalctl -u asaar-web -n 30 --no-pager      # web startup log
 ```bash
 cd /www/wwwroot/shehabw1 && bash deploy.sh
 ```
-`deploy.sh` pulls master, rebuilds, migrates, `chown`s, then **restarts both
-`asaar-web` and `asaar-scraper` automatically** — no manual step. Because the
-web app is restarted right after the build, the freshly built `.next` (new
-build id + chunk hashes) is what gets served; this is what prevents the
-**white-page-after-deploy** problem (an old server process serving stale chunk
-URLs that now 404).
+`deploy.sh` pulls master, rebuilds, migrates, `chown`s, and restarts the
+scraper automatically. It does **not** restart the web app (the Node Project
+has no reliable CLI restart) — after it finishes, **Restart the Node Project in
+the aaPanel UI** so the freshly built `.next` (new build id + chunk hashes) is
+served. Skipping that leaves the old process serving stale chunk URLs → a
+**white page** until you restart.
 
 ### Service management cheatsheet
 ```bash
-systemctl restart asaar-web        # restart web only
-systemctl restart asaar-scraper    # restart scraper only
-journalctl -u asaar-web -f         # tail web logs (e.g. to see /_next 404s)
+# Web (aaPanel Node Project): Start/Stop/Restart from the panel. Check it with:
+ss -ltnp | grep :3000              # the node process serving the site
+# Scraper (systemd):
+systemctl restart asaar-scraper    # restart scraper
 journalctl -u asaar-scraper -f     # tail scraper logs
 ```

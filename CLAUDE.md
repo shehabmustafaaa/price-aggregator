@@ -104,10 +104,12 @@ redirect-after-POST (`?saved=1`) to avoid resubmission prompts.
 ## Production
 
 Live at https://shehabw1.space — aaPanel Linux host, project root `/www/wwwroot/shehabw1`.
-Process model: both the web app (**systemd `asaar-web`**, Next.js on **port 3000**) and the
-scraper daemon (**systemd `asaar-scraper`**) run as systemd services; aaPanel provides only
-Nginx reverse-proxy (→ 127.0.0.1:3000) + SSL. **NO pm2 and NO aaPanel "Node Project"** (a Node
-Project respawns the app and fights systemd). Deploy = push to master, then on the server
-`bash deploy.sh`, which rebuilds, migrates, chowns, and **restarts both `asaar-web` and
-`asaar-scraper`** — no manual UI step. Runbook: `DEPLOY.md`. Shell scripts must stay LF
-(`.gitattributes` enforces).
+Process model: the web app runs as an **aaPanel Node Project** ("shehabw1", start command
+`npm run start -- -p 3000`, user `www`, **Boot enabled**, Pkg Manager npm); the scraper runs as
+**systemd `asaar-scraper`**; aaPanel does Nginx reverse-proxy (→ 127.0.0.1:3000) + SSL. **NO pm2.
+Run exactly ONE web manager** — do NOT also create a systemd `asaar-web`; the two race for port
+3000 on reboot and one crash-loops on `EADDRINUSE`. Deploy = push to master, then on the server
+`bash deploy.sh` (pulls, rebuilds, migrates, chowns, restarts the scraper) **and then Restart the
+Node Project in the aaPanel UI** to serve the fresh build. Check web status with
+`ss -ltnp | grep :3000` (the panel's Stopped/Running label has been unreliable). Runbook:
+`DEPLOY.md`. Shell scripts must stay LF (`.gitattributes` enforces).
